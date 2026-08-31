@@ -23,6 +23,14 @@ const titleCase = value => String(value || '').replace(/\b\w/g, letter => letter
 const normalize = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const percent = (value, total) => total ? Math.min(100, Math.round(value / total * 100)) : 0;
 
+// Robust base for GitHub Pages project sites (e.g. /French/) and local dev
+const SITE_BASE = new URL('..', import.meta.url);
+function siteFetch(path) {
+  const clean = String(path).replace(/^\.?\//, '');
+  const url = new URL(clean, SITE_BASE);
+  return fetch(url, { cache: 'no-store' });
+}
+
 function externalUrl(value) {
   try {
     const parsed = new URL(value);
@@ -103,11 +111,12 @@ function updateProgress() {
 async function loadManifest() {
   showLoading();
   try {
-    const manifestResponse = await fetch('./content/index.json', { cache: 'no-store' });
-    if (!manifestResponse.ok) throw new Error(`Content manifest returned ${manifestResponse.status}.`);
+    const manifestResponse = await siteFetch('content/index.json');
+    if (!manifestResponse.ok) throw new Error(`Content manifest returned ${manifestResponse.status} at ${manifestResponse.url}.`);
     state.manifest = await manifestResponse.json();
-    const analyticsResponse = await fetch(`./${state.manifest.analytics || 'data/analytics.json'}`, { cache: 'no-store' });
-    if (!analyticsResponse.ok) throw new Error(`Analytics returned ${analyticsResponse.status}.`);
+    const analyticsPath = state.manifest.analytics || 'data/analytics.json';
+    const analyticsResponse = await siteFetch(analyticsPath);
+    if (!analyticsResponse.ok) throw new Error(`Analytics returned ${analyticsResponse.status} at ${analyticsResponse.url}.`);
     state.analytics = await analyticsResponse.json();
     renderTypeFilters();
     renderLibrary();
@@ -118,7 +127,8 @@ async function loadManifest() {
       await loadLesson(selected, route.tab);
     }
   } catch (error) {
-    showError(`${error.message} Run “npm run build” and serve the dist folder through a local web server.`);
+    console.error(error);
+    showError(`${error.message} Run “npm run build” and serve the dist folder through a local web server. (base: ${SITE_BASE.href})`);
   }
 }
 
@@ -186,8 +196,8 @@ async function loadLesson(item, requestedTab = null) {
   if (!item) return;
   showLoading();
   try {
-    const response = await fetch(`./${item.path}`, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`Lesson returned ${response.status}.`);
+    const response = await siteFetch(item.path);
+    if (!response.ok) throw new Error(`Lesson returned ${response.status} at ${response.url}.`);
     state.selected = item;
     state.lesson = parseLesson(await response.text());
     state.wordType = 'all';
@@ -204,7 +214,8 @@ async function loadLesson(item, requestedTab = null) {
     renderLibrary();
     document.title = `${item.title} · Le Petit Atelier Français`;
   } catch (error) {
-    showError(`${error.message} Check the lesson path and rebuild the content manifest.`);
+    console.error(error);
+    showError(`${error.message} Check the lesson path and rebuild the content manifest. (tried: ${item?.path}, base: ${SITE_BASE.href})`);
   }
 }
 
