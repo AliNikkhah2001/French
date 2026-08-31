@@ -58,7 +58,15 @@ export function inlineMarkdown(value = '') {
 
 function splitTableRow(line) {
   const clean = line.trim().replace(/^\|/, '').replace(/\|$/, '');
-  return clean.split('|').map(cell => cell.trim());
+  const cells = [];
+  let cell = '';
+  for (let index = 0; index < clean.length; index += 1) {
+    if (clean[index] === '\\' && clean[index + 1] === '|') { cell += '|'; index += 1; }
+    else if (clean[index] === '|') { cells.push(cell.trim()); cell = ''; }
+    else cell += clean[index];
+  }
+  cells.push(cell.trim());
+  return cells;
 }
 
 export function parseTable(markdown = '') {

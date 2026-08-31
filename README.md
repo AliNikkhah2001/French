@@ -11,6 +11,12 @@ The platform turns Markdown files into interactive lessons with:
 - collocations and important notes
 - flashcards with progress tracking
 - multiple-choice exam practice and scoring
+- a 365-day GitHub-style activity calendar and current/longest streaks
+- separate mastery tracking for transcript, vocabulary, grammar, flashcards, and exams
+- a searchable entity inventory for lessons, words, grammar patterns, and collocations
+- build-time exploratory data analysis (token counts, word lengths, distributions, and per-lesson statistics)
+- personal and catalogue matching against a ranked French top-5,000 benchmark
+- JSON progress export/import for moving between browsers
 - content filters for podcast, book, article, video, and guide
 - responsive, accessible layout
 
@@ -36,6 +42,20 @@ Open `http://localhost:8000`.
 5. Commit and push to `main`.
 
 The GitHub workflow discovers every non-draft `.md` file inside `content/`, generates a manifest, validates the lesson, and publishes the updated site automatically.
+
+You can keep a large bilingual transcript outside the Markdown file. Add `transcript_file: "my-transcript.tsv"` to the lesson frontmatter, then place the TSV, CSV, or JSON file beside the lesson. The build converts it to the interactive transcript automatically. See the format guide for examples.
+
+## Analytics and progress
+
+`npm run build` creates:
+
+- `dist/data/analytics.json` for the dashboard
+- `dist/data/analytics-summary.md` for the GitHub Actions job summary
+- a content manifest that lists every published lesson and entity count
+
+Pull requests validate all content and publish the analytics summary without deploying. Pushes to `main` do the same checks and deploy to GitHub Pages.
+
+The site is fully static, so personal study progress is stored in browser `localStorage`, not in GitHub. Use **My progress → Export progress** to back it up and **Import progress** on another browser or device. No account or tracking service is used.
 
 ## Publish on GitHub Pages
 
@@ -94,6 +114,7 @@ The included Emel Mathlouthi lesson is a study example based on the excerpt supp
 ├── .github/workflows/deploy-pages.yml
 ├── assets/
 │   ├── app.js
+│   ├── analytics-utils.js
 │   ├── content-parser.js
 │   └── styles.css
 ├── content/
@@ -101,6 +122,7 @@ The included Emel Mathlouthi lesson is a study example based on the excerpt supp
 │   ├── episode-88-une-chanson-revolutionnaire.md
 │   └── french-exams-roadmap.md
 ├── docs/content-format.md
+├── data/fr_50k.txt
 ├── scripts/build-content.mjs
 ├── index.html
 └── package.json
@@ -114,3 +136,7 @@ The included Emel Mathlouthi lesson is a study example based on the excerpt supp
 - [DALF](https://www.france-education-international.fr/en/diplome/dalf)
 - [TCF tout public](https://www.france-education-international.fr/en/test/tcf-tout-public)
 - [TEF Canada](https://www.lefrancaisdesaffaires.fr/en/candidate/test-evaluation-francais/tef-canada/presentation/)
+
+## Frequency data
+
+The common-word comparison uses the first 5,000 rows of the French OpenSubtitles 2018 list from [hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords), whose content is licensed under CC BY-SA 4.0. Subtitle frequency is conversational and corpus-specific, so the ranking is a benchmark—not a universal learning order. [Lexique](https://www.lexique.org/) is linked in the dashboard as a research-oriented alternative. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

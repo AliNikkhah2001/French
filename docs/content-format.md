@@ -22,6 +22,7 @@ source_url: "https://example.com/transcript"
 apple_url: "https://podcasts.apple.com/example"
 audio_url: ""
 audio_embed: "https://player.example.com/embed/123"
+transcript_file: "episode-transcript.tsv"
 draft: false
 ---
 ```
@@ -61,6 +62,32 @@ Use a table with `French`, `English`, and optional `Notes` columns:
 ```
 
 The page turns each row into an interactive line with a translation reveal button.
+
+### External transcript files
+
+For long transcripts, set `transcript_file` in frontmatter. The path is relative to the lesson and must stay inside `content/`. Supported formats are TSV, CSV, and JSON.
+
+TSV or CSV needs a header row. `Notes` is optional:
+
+```tsv
+French	English	Notes
+Bonjour !	Hello!	A common greeting.
+J’ai grandi en Tunisie.	I grew up in Tunisia.	Passé composé.
+```
+
+JSON is an array of objects:
+
+```json
+[
+  {
+    "French": "Bonjour !",
+    "English": "Hello!",
+    "Notes": "A common greeting."
+  }
+]
+```
+
+Accepted aliases are `fr`/`en`, and `translation` for English. During the build, external rows replace an existing `# Transcript` section or create one. The deployed lesson remains self-contained. A copy-ready TSV is included at `content/_sample-transcript.tsv`.
 
 ## Grammar
 
@@ -131,7 +158,20 @@ Answers may be `A`, `B`, `C`, or `D`:
 
 ## Table limitations
 
-Keep table cells on one line and do not place an unescaped pipe character (`|`) inside a cell. For complex explanations, put the longer text in a grammar or notes section.
+Keep table cells on one line and escape a pipe as `\|`. For complex explanations, put the longer text in a grammar or notes section.
+
+## What the build calculates
+
+Every build tokenizes the French transcript and catalogue entities, then generates:
+
+- total and unique transcript word counts
+- top transcript words and word-length distribution
+- entity lists and per-lesson counts
+- content-type and vocabulary-type distributions
+- catalogue coverage across frequency-rank bands
+- matching against the top 5,000 rows of `data/fr_50k.txt`
+
+Vocabulary and grammar mastery are marked by the learner in the browser. The dashboard combines those marks with the build-time catalogue data to calculate personal common-5,000 coverage.
 
 ## Audio guidance
 

@@ -3,6 +3,8 @@ name: Build and deploy the French learning platform
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -27,17 +29,23 @@ jobs:
       - name: Validate lesson Markdown
         run: node scripts/build-content.mjs --check
 
+      - name: Publish content analytics summary
+        run: cat dist/data/analytics-summary.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v6
         with:
           enablement: true
 
       - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

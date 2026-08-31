@@ -13,6 +13,7 @@ source_url: "https://example.com"
 apple_url: ""
 audio_url: ""
 audio_embed: ""
+transcript_file: ""
 draft: true
 ---
 

@@ -17,7 +17,7 @@
     </a>
     <button class="mobile-library-button" id="mobile-library-button" type="button" aria-expanded="false" aria-controls="library-panel">☰ Library</button>
     <nav class="top-actions" aria-label="Page links">
-      <a href="https://github.com/" target="_blank" rel="noopener">GitHub Pages ready</a>
+      <button class="dashboard-button" id="dashboard-button" type="button">▦ My progress</button>
       <button class="icon-button" id="theme-button" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">☾</button>
     </nav>
   </header>
@@ -54,6 +54,8 @@
         <p id="error-message">The lesson could not be loaded.</p>
         <button class="button blue" id="retry-button" type="button">Try again</button>
       </div>
+
+      <section id="dashboard-view" hidden aria-label="Learning dashboard"></section>
 
       <article id="lesson-view" hidden>
         <header class="lesson-hero">
