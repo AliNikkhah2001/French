@@ -1,0 +1,14 @@
+{
+  "name": "le-petit-atelier-francais",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A Markdown-powered French learning platform for GitHub Pages.",
+  "scripts": {
+    "build": "node scripts/build-content.mjs",
+    "test": "node scripts/build-content.mjs --check"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

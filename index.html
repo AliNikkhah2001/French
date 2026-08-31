@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A playful, Markdown-powered French learning platform for podcasts, books, articles, audio, flashcards, and exams.">
+  <meta name="theme-color" content="#153b67">
+  <title>Le Petit Atelier Français</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="tricolore" aria-hidden="true"><span></span><span></span><span></span></div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Le Petit Atelier Français home">
+      <span class="brand-mark">ÇA</span>
+      <span><strong>Le Petit Atelier</strong><small>français, mais amusant</small></span>
+    </a>
+    <button class="mobile-library-button" id="mobile-library-button" type="button" aria-expanded="false" aria-controls="library-panel">☰ Library</button>
+    <nav class="top-actions" aria-label="Page links">
+      <a href="https://github.com/" target="_blank" rel="noopener">GitHub Pages ready</a>
+      <button class="icon-button" id="theme-button" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">☾</button>
+    </nav>
+  </header>
+
+  <div class="app-shell">
+    <aside class="library-panel" id="library-panel">
+      <div class="library-heading">
+        <div><span class="kicker">La bibliothèque</span><h1>Pick today’s adventure.</h1></div>
+        <span class="doodle" aria-hidden="true">🥖</span>
+      </div>
+      <label class="search-box">
+        <span aria-hidden="true">⌕</span>
+        <input id="library-search" type="search" placeholder="Search lessons…" autocomplete="off">
+      </label>
+      <div class="filter-scroller" id="type-filters" aria-label="Filter by content type"></div>
+      <div class="lesson-count" id="lesson-count">Loading the menu…</div>
+      <div class="lesson-list" id="lesson-list" aria-live="polite"></div>
+      <div class="add-note">
+        <span aria-hidden="true">✎</span>
+        <p><b>Add one Markdown file.</b><br>The next deployment discovers it automatically.</p>
+      </div>
+    </aside>
+
+    <main class="lesson-main" id="lesson-main">
+      <div class="loading-state" id="loading-state">
+        <div class="loading-croissant" aria-hidden="true">🥐</div>
+        <h2>On prépare votre leçon…</h2>
+        <p>Warming the croissants and loading the Markdown.</p>
+      </div>
+
+      <div class="error-state" id="error-state" hidden>
+        <span aria-hidden="true">🫗</span>
+        <h2>Oups, the café spilled.</h2>
+        <p id="error-message">The lesson could not be loaded.</p>
+        <button class="button blue" id="retry-button" type="button">Try again</button>
+      </div>
+
+      <article id="lesson-view" hidden>
+        <header class="lesson-hero">
+          <div class="hero-copy">
+            <div class="meta-line"><span class="content-emoji" id="lesson-emoji">🎙️</span><span class="pill" id="lesson-type">Podcast</span><span class="pill coral" id="lesson-level">A1–A2</span><span class="duration" id="lesson-duration"></span></div>
+            <h2 id="lesson-title"></h2>
+            <p id="lesson-description"></p>
+            <div class="source-actions" id="source-actions"></div>
+          </div>
+          <div class="hero-poster" aria-hidden="true">
+            <span class="poster-top">LEÇON DU JOUR</span>
+            <strong id="poster-word">ÉCOUTEZ!</strong>
+            <div class="poster-art">🎧</div>
+            <span class="poster-bottom">petit à petit</span>
+          </div>
+        </header>
+
+        <section class="audio-section" id="audio-section" hidden>
+          <div class="audio-label"><span aria-hidden="true">♪</span><div><b>Listen at the source</b><small>Use headphones, then replay one short part.</small></div></div>
+          <div id="audio-player"></div>
+        </section>
+
+        <div class="study-toolbar">
+          <div class="progress-copy"><span id="progress-label">Lesson progress</span><strong id="progress-value">0%</strong></div>
+          <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progress-fill"></div></div>
+          <button class="reset-button" id="reset-lesson" type="button">Reset</button>
+        </div>
+
+        <nav class="lesson-tabs" id="lesson-tabs" aria-label="Lesson sections"></nav>
+        <section class="tab-panel" id="tab-panel" tabindex="-1"></section>
+      </article>
+    </main>
+  </div>
+
+  <template id="empty-library-template">
+    <div class="empty-library"><span>🕵️‍♀️</span><b>No lesson found.</b><p>Try a shorter search or another content type.</p></div>
+  </template>
+
+  <script type="module" src="assets/app.js"></script>
+</body>
+</html>
