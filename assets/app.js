@@ -3,6 +3,7 @@ import { dateFromKey, localDateKey, normalizeFrench } from './analytics-utils.js
 
 const ACTIVITY_KEY = 'atelier-activity-v1';
 const FREQUENCY_KEY = 'atelier-frequency-known-v1';
+const WORDLIST_KEY = 'atelier-wordlist-v1';
 const state = {
   manifest: null,
   analytics: null,
@@ -15,7 +16,13 @@ const state = {
   cardIndex: 0,
   cardRevealed: false,
   entityType: 'all',
-  entitySearch: ''
+  entitySearch: '',
+  view: 'lesson',
+  wordlistFilter: 'all',
+  reviewFilter: 'due',
+  reviewIndex: 0,
+  reviewRevealed: false,
+  installEvent: null
 };
 
 const $ = id => document.getElementById(id);
@@ -41,14 +48,33 @@ function externalUrl(value) {
 }
 
 function readRoute() {
-  if (location.hash === '#dashboard') return { dashboard: true, slug: null, tab: null };
-  const params = new URLSearchParams(location.hash.replace(/^#/, ''));
-  return { dashboard: params.has('dashboard'), slug: params.get('lesson'), tab: params.get('tab') };
+  const raw = location.hash.replace(/^#/, '');
+  if (raw === 'dashboard') return { view: 'dashboard', slug: null, tab: null };
+  if (raw === 'wordlist') return { view: 'wordlist', slug: null, tab: null };
+  if (raw === 'review') return { view: 'review', slug: null, tab: null };
+  const params = new URLSearchParams(raw);
+  return {
+    view: params.get('view') || 'lesson',
+    slug: params.get('lesson'),
+    tab: params.get('tab'),
+    wordlistFilter: params.get('wl'),
+    reviewFilter: params.get('rv')
+  };
 }
 
-function replaceRoute(slug, tab) {
-  const params = new URLSearchParams({ lesson: slug, tab });
-  history.replaceState(null, '', `${location.pathname}${location.search}#${params}`);
+function replaceRoute(updates = {}) {
+  const current = readRoute();
+  const params = new URLSearchParams();
+  const view = updates.view ?? current.view ?? 'lesson';
+  if (view !== 'lesson') params.set('view', view);
+  const slug = updates.slug ?? current.slug;
+  const tab = updates.tab ?? current.tab;
+  if (view === 'lesson' && slug) params.set('lesson', slug);
+  if (view === 'lesson' && tab) params.set('tab', tab);
+  if (updates.wordlistFilter) params.set('wl', updates.wordlistFilter);
+  if (updates.reviewFilter) params.set('rv', updates.reviewFilter);
+  const next = params.toString();
+  history.replaceState(null, '', `${location.pathname}${location.search}${next ? `#${next}` : ''}`);
 }
 
 function progressKey(slug = state.selected?.slug) {
@@ -121,7 +147,9 @@ async function loadManifest() {
     renderTypeFilters();
     renderLibrary();
     const route = readRoute();
-    if (route.dashboard) showDashboard();
+    if (route.view === 'dashboard') showDashboard();
+    else if (route.view === 'wordlist') showWordList();
+    else if (route.view === 'review') showReview();
     else {
       const selected = state.manifest.lessons.find(item => item.slug === route.slug) || state.manifest.lessons[0];
       await loadLesson(selected, route.tab);
@@ -137,12 +165,18 @@ function showLoading() {
   $('error-state').hidden = true;
   $('lesson-view').hidden = true;
   $('dashboard-view').hidden = true;
+  $('wordlist-view').hidden = true;
+  $('review-view').hidden = true;
+  document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+  $('dashboard-button')?.classList.remove('active');
 }
 
 function showError(message) {
   $('loading-state').hidden = true;
   $('lesson-view').hidden = true;
   $('dashboard-view').hidden = true;
+  $('wordlist-view').hidden = true;
+  $('review-view').hidden = true;
   $('error-state').hidden = false;
   $('error-message').textContent = message;
 }
@@ -151,8 +185,12 @@ function showLesson() {
   $('loading-state').hidden = true;
   $('error-state').hidden = true;
   $('dashboard-view').hidden = true;
+  $('wordlist-view').hidden = true;
+  $('review-view').hidden = true;
   $('lesson-view').hidden = false;
+  document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
   $('dashboard-button').classList.remove('active');
+  state.view = 'lesson';
 }
 
 function filteredLessons() {
@@ -298,10 +336,12 @@ function renderTranscript(query = '') {
   $('reveal-all').addEventListener('click', () => { const next = getProgress(); if (next.revealed.length < state.lesson.transcript.length) recordActivity('translation'); next.revealed = state.lesson.transcript.map((_, index) => index); setProgress(next); renderTranscript(query); });
   $('hide-all').addEventListener('click', () => { const next = getProgress(); next.revealed = []; setProgress(next); renderTranscript(query); });
   $('tab-panel').querySelectorAll('[data-reveal-line]').forEach(button => button.addEventListener('click', () => toggleTranslation(Number(button.dataset.revealLine), query)));
+  $('tab-panel').querySelectorAll('[data-speak]').forEach(button => button.addEventListener('click', event => speak(button.dataset.speak, event.currentTarget)));
 }
 
 function transcriptCard(line, index, revealed) {
-  return `<article class="transcript-card"><div class="transcript-french"><span class="line-number">${String(index + 1).padStart(2, '0')}</span><div class="french-line">${inlineMarkdown(line.french || '')}</div><button class="translation-button" type="button" data-reveal-line="${index}" aria-expanded="${revealed}">${revealed ? 'Hide English' : 'Reveal English'}</button></div><div class="transcript-english" ${revealed ? '' : 'hidden'}><p>${inlineMarkdown(line.english || '')}</p>${line.notes ? `<span class="transcript-note">💡 ${inlineMarkdown(line.notes)}</span>` : ''}</div></article>`;
+  const frenchText = (line.french || '').replace(/<[^>]+>/g, '').trim();
+  return `<article class="transcript-card"><div class="transcript-french"><span class="line-number">${String(index + 1).padStart(2, '0')}</span><div class="french-line">${inlineMarkdown(line.french || '')}<button class="speak-button" type="button" data-speak="${escapeHtml(frenchText)}" aria-label="Pronounce line" title="Pronounce line" style="margin-left:8px;">🔊</button></div><button class="translation-button" type="button" data-reveal-line="${index}" aria-expanded="${revealed}">${revealed ? 'Hide English' : 'Reveal English'}</button></div><div class="transcript-english" ${revealed ? '' : 'hidden'}><p>${inlineMarkdown(line.english || '')}</p>${line.notes ? `<span class="transcript-note">💡 ${inlineMarkdown(line.notes)}</span>` : ''}</div></article>`;
 }
 
 function toggleTranslation(index, query) {
@@ -334,10 +374,33 @@ function renderVocabulary(query = '') {
   const q = normalize(query);
   const progress = getProgress();
   const words = state.lesson.vocabulary.map((word, index) => ({ word, index })).filter(({ word }) => (state.wordType === 'all' || normalize(word.type) === state.wordType) && (!q || normalize(Object.values(word).join(' ')).includes(q)));
-  $('tab-panel').innerHTML = `${sectionHeading('Le panier de mots', 'Vocabulary market', 'Search, filter, and mark each useful word as learned.', `${progress.learnedWords.length}/${state.lesson.vocabulary.length} learned`)}<div class="word-controls"><label class="compact-search"><span>⌕</span><input id="word-search" type="search" value="${escapeHtml(query)}" placeholder="Search French or English…"></label><div class="word-filter-row">${vocabularyTypes().map(type => `<button class="word-filter ${type === state.wordType ? 'active' : ''}" type="button" data-word-type="${escapeHtml(type)}">${escapeHtml(type)}</button>`).join('')}</div></div><div class="table-scroll"><table class="vocabulary-table"><thead><tr><th>French</th><th>English</th><th>Type</th><th>Note</th><th>Progress</th></tr></thead><tbody>${words.map(({ word, index }) => { const learned = progress.learnedWords.includes(index); return `<tr class="${learned ? 'learned-row' : ''}"><td>${inlineMarkdown(word.french || '')}</td><td>${inlineMarkdown(word.english || '')}</td><td>${inlineMarkdown(word.type || '')}</td><td>${inlineMarkdown(word.note || '')}</td><td><button class="mastery-button ${learned ? 'learned' : ''}" type="button" data-learn-word="${index}">${learned ? '✓ Learned' : 'Learn'}</button></td></tr>`; }).join('')}</tbody></table></div>`;
+  $('tab-panel').innerHTML = `${sectionHeading('Le panier de mots', 'Vocabulary market', 'Search, filter, and mark each useful word as learned.', `${progress.learnedWords.length}/${state.lesson.vocabulary.length} learned`)}<div class="word-controls"><label class="compact-search"><span>⌕</span><input id="word-search" type="search" value="${escapeHtml(query)}" placeholder="Search French or English…"></label><div class="word-filter-row">${vocabularyTypes().map(type => `<button class="word-filter ${type === state.wordType ? 'active' : ''}" type="button" data-word-type="${escapeHtml(type)}">${escapeHtml(type)}</button>`).join('')}</div></div><div class="table-scroll"><table class="vocabulary-table"><thead><tr><th>French</th><th>English</th><th>Type</th><th>Note</th><th>Actions</th></tr></thead><tbody>${words.map(({ word, index }) => { const learned = progress.learnedWords.includes(index); const french = (word.french || '').replace(/<[^>]+>/g, '').split('/')[0].trim(); return `<tr class="${learned ? 'learned-row' : ''}"><td><span class="word-link" data-lookup="${escapeHtml(french)}" tabindex="0">${inlineMarkdown(word.french || '')}</span> <button class="speak-button" type="button" data-speak="${escapeHtml(french)}" aria-label="Pronounce" title="Pronounce">🔊</button></td><td>${inlineMarkdown(word.english || '')}</td><td>${inlineMarkdown(word.type || '')}</td><td>${inlineMarkdown(word.note || '')}</td><td><button class="mastery-button ${learned ? 'learned' : ''}" type="button" data-learn-word="${index}">${learned ? '✓ Learned' : 'Learn'}</button> <button class="mastery-button" type="button" data-add-wordlist="${index}" title="Add to my word list">+ List</button></td></tr>`; }).join('')}</tbody></table></div>`;
   $('word-search').addEventListener('input', event => renderVocabulary(event.target.value));
   $('tab-panel').querySelectorAll('[data-word-type]').forEach(button => button.addEventListener('click', () => { state.wordType = button.dataset.wordType; renderVocabulary(query); }));
   $('tab-panel').querySelectorAll('[data-learn-word]').forEach(button => button.addEventListener('click', () => toggleLearned('learnedWords', Number(button.dataset.learnWord), () => renderVocabulary(query), 'vocabulary')));
+  $('tab-panel').querySelectorAll('[data-add-wordlist]').forEach(button => button.addEventListener('click', () => addLessonWordToList(Number(button.dataset.addWordlist))));
+  $('tab-panel').querySelectorAll('[data-speak]').forEach(button => button.addEventListener('click', event => speak(button.dataset.speak, event.currentTarget)));
+}
+
+function addLessonWordToList(index) {
+  const word = state.lesson.vocabulary[index];
+  if (!word) return;
+  const french = (word.french || '').replace(/<[^>]+>/g, '').split('/')[0].trim();
+  const list = getWordList();
+  if (list.some(item => normalizeFrench(item.french) === normalizeFrench(french))) {
+    showToast(`“${french}” is already in your list.`, 'success');
+    return;
+  }
+  list.unshift({
+    id: `word-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    french,
+    english: word.english || '',
+    type: word.type || 'vocab',
+    createdAt: Date.now()
+  });
+  saveWordList(list);
+  recordActivity('word-add');
+  showToast(`Added “${french}” to your list.`, 'success');
 }
 
 function renderCollocations() {
@@ -355,11 +418,30 @@ function renderFlashcards() {
   const card = cards[state.cardIndex];
   const progress = getProgress();
   const known = progress.known.includes(state.cardIndex);
-  $('tab-panel').innerHTML = `${sectionHeading('La mémoire, sans panique', 'Flashcards', 'Say the answer aloud before revealing it.', `${progress.known.length}/${cards.length} known`)}<div class="flashcard-stage"><div class="flashcard"><div class="flashcard-content"><strong>${inlineMarkdown(state.cardRevealed ? card.back : card.front)}</strong>${state.cardRevealed && card.hint ? `<p class="flashcard-hint">💡 ${inlineMarkdown(card.hint)}</p>` : '<p>What does it mean?</p>'}</div></div><p class="card-position">Card ${state.cardIndex + 1} of ${cards.length}${known ? ' · marked known' : ''}</p><div class="card-controls"><button class="button paper" id="previous-card" type="button">← Previous</button><button class="button blue" id="reveal-card" type="button">${state.cardRevealed ? 'Show French' : 'Reveal answer'}</button><button class="button ${known ? 'paper' : 'red'}" id="know-card" type="button">${known ? 'Undo known' : 'I knew it ✓'}</button><button class="button paper" id="next-card" type="button">Next →</button></div></div>`;
+  const frontText = (card.front || '').replace(/<[^>]+>/g, '').split('/')[0].trim();
+  $('tab-panel').innerHTML = `${sectionHeading('La mémoire, sans panique', 'Flashcards', 'Say the answer aloud before revealing it.', `${progress.known.length}/${cards.length} known`)}<div class="flashcard-stage"><div class="flashcard"><div class="flashcard-content"><button class="speak-button" type="button" id="flashcard-speak" data-speak="${escapeHtml(frontText)}" aria-label="Pronounce" title="Pronounce" style="position:absolute;top:18px;right:18px;">🔊</button><strong>${inlineMarkdown(state.cardRevealed ? card.back : card.front)}</strong>${state.cardRevealed && card.hint ? `<p class="flashcard-hint">💡 ${inlineMarkdown(card.hint)}</p>` : '<p>What does it mean?</p>'}</div></div><p class="card-position">Card ${state.cardIndex + 1} of ${cards.length}${known ? ' · marked known' : ''}</p><div class="card-controls"><button class="button paper" id="previous-card" type="button">← Previous</button><button class="button blue" id="reveal-card" type="button">${state.cardRevealed ? 'Show French' : 'Reveal answer'}</button><button class="button ${known ? 'paper' : 'red'}" id="know-card" type="button">${known ? 'Undo known' : 'I knew it ✓'}</button><button class="button paper" id="next-card" type="button">Next →</button><button class="button paper" id="add-flashcard-list" type="button" title="Add to my word list">+ List</button></div></div>`;
   $('previous-card').addEventListener('click', () => moveCard(-1));
   $('next-card').addEventListener('click', () => moveCard(1));
   $('reveal-card').addEventListener('click', () => { state.cardRevealed = !state.cardRevealed; renderFlashcards(); });
   $('know-card').addEventListener('click', markCardKnown);
+  $('flashcard-speak').addEventListener('click', event => speak(frontText, event.currentTarget));
+  $('add-flashcard-list').addEventListener('click', () => {
+    const list = getWordList();
+    if (list.some(item => normalizeFrench(item.french) === normalizeFrench(frontText))) {
+      showToast(`“${frontText}” is already in your list.`, 'success');
+      return;
+    }
+    list.unshift({
+      id: `word-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      french: frontText,
+      english: card.back || '',
+      type: 'phrase',
+      createdAt: Date.now()
+    });
+    saveWordList(list);
+    recordActivity('word-add');
+    showToast(`Added “${frontText}” to your list.`, 'success');
+  });
 }
 
 function moveCard(change) {
@@ -476,8 +558,478 @@ function countDistribution(values) {
 function showDashboard() {
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = false;
+  $('wordlist-view').hidden = true; $('review-view').hidden = true;
   $('dashboard-button').classList.add('active'); closeMobileLibrary(); renderDashboard(); renderLibrary();
   document.title = 'Learning dashboard · Le Petit Atelier Français';
+  state.view = 'dashboard';
+  document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+  $('dashboard-button').classList.add('active');
+}
+
+/* ------------------- Word list & spaced repetition ------------------- */
+
+function getWordList() {
+  try { return JSON.parse(localStorage.getItem(WORDLIST_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveWordList(list) {
+  localStorage.setItem(WORDLIST_KEY, JSON.stringify(list));
+}
+
+function spacedRepetitionBucket(word, now = Date.now()) {
+  if (!word.lastReviewed) return 'fresh';
+  const interval = word.interval || 0;
+  const due = (word.dueAt || 0) - now;
+  if (due <= 0) return 'due';
+  if (due < 86400000) return 'soon';
+  return 'later';
+}
+
+function recordReview(word, quality) {
+  const now = Date.now();
+  word.lastReviewed = now;
+  word.repetitions = (word.repetitions || 0) + 1;
+  word.reviews = word.reviews || [];
+  word.reviews.push({ at: now, quality });
+  let interval;
+  if (quality < 2) {
+    interval = 60 * 1000;
+    word.repetitions = 0;
+  } else if (quality === 2) {
+    interval = Math.max(60 * 1000, (word.interval || 0) * 1.2);
+  } else if (quality === 3) {
+    interval = Math.max(24 * 3600 * 1000, (word.interval || 0) * 2.5 || 24 * 3600 * 1000);
+  } else {
+    interval = Math.max(3 * 24 * 3600 * 1000, (word.interval || 0) * 4 || 3 * 24 * 3600 * 1000);
+  }
+  word.interval = interval;
+  word.dueAt = now + interval;
+  return word;
+}
+
+function showWordList() {
+  if (!state.analytics) return;
+  $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = true;
+  $('wordlist-view').hidden = false; $('review-view').hidden = true;
+  document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+  $('wordlist-button').classList.add('active');
+  closeMobileLibrary();
+  state.view = 'wordlist';
+  document.title = 'My word list · Le Petit Atelier Français';
+  renderWordList();
+  renderLibrary();
+}
+
+function renderWordList() {
+  const words = getWordList();
+  const filter = state.wordlistFilter;
+  const now = Date.now();
+  const filtered = filter === 'all' ? words : words.filter(w => spacedRepetitionBucket(w, now) === filter);
+  const stats = words.reduce((acc, word) => {
+    const bucket = spacedRepetitionBucket(word, now);
+    acc[bucket] = (acc[bucket] || 0) + 1;
+    return acc;
+  }, { fresh: 0, due: 0, soon: 0, later: 0 });
+  const filterChip = (value, label) => `<button class="review-tab ${filter === value ? 'active' : ''}" data-wl-filter="${value}">${label}</button>`;
+  $('wordlist-view').innerHTML = `
+    <header class="wordlist-hero">
+      <div>
+        <span class="kicker">Mon carnet</span>
+        <h2>My word list</h2>
+        <p>Add any French word, mark what you remember, and the review queue keeps it fresh in long-term memory.</p>
+      </div>
+      <div class="wordlist-stats">
+        <div class="wordlist-stat"><small>Total words</small><b>${words.length}</b></div>
+        <div class="wordlist-stat"><small>Due today</small><b>${stats.due || 0}</b></div>
+        <div class="wordlist-stat"><small>Coming up</small><b>${stats.soon || 0}</b></div>
+        <div class="wordlist-stat"><small>Mastered</small><b>${stats.later || 0}</b></div>
+      </div>
+      <form class="add-word-form" id="add-word-form" autocomplete="off">
+        <input id="add-french" type="text" placeholder="Mot français…" required maxlength="80" aria-label="French word">
+        <input id="add-english" type="text" placeholder="English meaning…" maxlength="120" aria-label="English meaning">
+        <input id="add-type" type="text" placeholder="Type (noun, verb…)" maxlength="40" aria-label="Type">
+        <button class="button blue" type="submit" style="grid-column:1/-1;justify-self:stretch;">+ Add word</button>
+      </form>
+      <div class="review-tabs">${filterChip('all', 'All')} ${filterChip('fresh', 'New')} ${filterChip('due', 'Due')} ${filterChip('soon', 'Soon')} ${filterChip('later', 'Mastered')}</div>
+    </header>
+    <details class="add-note" style="margin-top:18px;background:var(--cream);">
+      <summary style="cursor:pointer;font-weight:800;color:var(--ink);">📥 Bulk import (paste lines like <em>chat — cat — noun</em>)</summary>
+      <textarea id="bulk-import" rows="5" placeholder="chat — cat — noun&#10;chien — dog — noun&#10;manger — to eat — verb" style="width:100%;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:var(--paper);"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <button class="button blue" type="button" id="bulk-import-button">Import words</button>
+        <button class="button paper" type="button" id="bulk-export-button">Export JSON</button>
+        <label class="button paper" style="cursor:pointer;">Import JSON<input type="file" id="bulk-import-file" accept="application/json" hidden></label>
+      </div>
+    </details>
+    <div class="wordlist-table">
+      <table>
+        <thead><tr><th>French</th><th>English</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>${filtered.length ? filtered.map(word => wordListRow(word, now)).join('') : '<tr><td colspan="5"><div class="empty-section">Your word list is empty. Add a word above to start studying.</div></td></tr>'}</tbody>
+      </table>
+    </div>`;
+  $('add-word-form').addEventListener('submit', event => { event.preventDefault(); addWordFromForm(); });
+  $('wordlist-view').querySelectorAll('[data-wl-filter]').forEach(button => button.addEventListener('click', () => {
+    state.wordlistFilter = button.dataset.wlFilter;
+    replaceRoute({ wordlistFilter: state.wordlistFilter });
+    renderWordList();
+  }));
+  $('wordlist-view').querySelectorAll('[data-speak]').forEach(button => button.addEventListener('click', () => speak(button.dataset.speak, button)));
+  $('wordlist-view').querySelectorAll('[data-lookup]').forEach(button => button.addEventListener('click', event => openDictionary(event.target, button.dataset.lookup)));
+  $('wordlist-view').querySelectorAll('[data-delete-word]').forEach(button => button.addEventListener('click', () => deleteWord(button.dataset.deleteWord)));
+  $('bulk-import-button')?.addEventListener('click', () => {
+    const text = $('bulk-import').value;
+    const added = importWords(text);
+    if (added) showToast(`Imported ${added} word${added === 1 ? '' : 's'}.`, 'success');
+    else showToast('Nothing to import — check the format.', 'error');
+    renderWordList();
+  });
+  $('bulk-export-button')?.addEventListener('click', () => exportWordList());
+  $('bulk-import-file')?.addEventListener('change', event => importWordListJson(event));
+}
+
+function wordListRow(word, now) {
+  const bucket = spacedRepetitionBucket(word, now);
+  const status = bucket === 'fresh' ? '<span class="review-now">New</span>' : bucket === 'due' ? '<span class="review-now">Due now</span>' : bucket === 'soon' ? '<span class="review-soon">Soon</span>' : '<span class="review-ok">Mastered</span>';
+  const due = word.dueAt ? new Date(word.dueAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  const speak = `<button class="speak-button" type="button" data-speak="${escapeHtml(word.french)}" aria-label="Pronounce ${escapeHtml(word.french)}" title="Pronounce">🔊</button>`;
+  const lookup = `<button class="icon-action" type="button" data-lookup="${escapeHtml(word.french)}" title="Dictionary">📖</button>`;
+  const del = `<button class="icon-action danger" type="button" data-delete-word="${escapeHtml(word.id)}" title="Remove">✕</button>`;
+  return `<tr>
+    <td class="french-cell" data-label="French"><span class="word-link" data-lookup="${escapeHtml(word.french)}" tabindex="0">${inlineMarkdown(word.french)}</span> ${speak}</td>
+    <td data-label="English">${inlineMarkdown(word.english || '')}</td>
+    <td data-label="Type">${inlineMarkdown(word.type || '')}</td>
+    <td data-label="Status">${status}<br><small style="color:var(--muted)">${due}</small></td>
+    <td class="actions" data-label="Actions">${lookup}${del}</td>
+  </tr>`;
+}
+
+function addWordFromForm() {
+  const french = $('add-french').value.trim();
+  const english = $('add-english').value.trim();
+  const type = $('add-type').value.trim();
+  if (!french) return;
+  const list = getWordList();
+  list.unshift({
+    id: `word-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    french,
+    english,
+    type: type || 'vocab',
+    createdAt: Date.now()
+  });
+  saveWordList(list);
+  recordActivity('word-add');
+  showToast(`Added “${french}” to your list.`, 'success');
+  $('add-french').value = '';
+  $('add-english').value = '';
+  $('add-type').value = '';
+  renderWordList();
+}
+
+function deleteWord(id) {
+  const list = getWordList().filter(word => word.id !== id);
+  saveWordList(list);
+  renderWordList();
+  showToast('Word removed.', 'success');
+}
+
+function exportWordList() {
+  const list = getWordList();
+  const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `atelier-wordlist-${localDateKey()}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function importWordListJson(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data)) throw new Error('Expected a JSON array of words.');
+      const list = getWordList();
+      for (const item of data) {
+        if (!item || typeof item.french !== 'string' || !item.french.trim()) continue;
+        list.unshift({
+          id: item.id || `word-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          french: item.french.trim(),
+          english: (item.english || '').trim(),
+          type: (item.type || 'vocab').trim(),
+          createdAt: item.createdAt || Date.now(),
+          lastReviewed: item.lastReviewed || null,
+          interval: item.interval || 0,
+          dueAt: item.dueAt || 0,
+          repetitions: item.repetitions || 0,
+          reviews: item.reviews || []
+        });
+      }
+      saveWordList(list);
+      showToast(`Imported ${data.length} word${data.length === 1 ? '' : 's'}.`, 'success');
+      renderWordList();
+    } catch (error) {
+      showToast(`Import failed: ${error.message}`, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function importWords(text) {
+  const lines = String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const list = getWordList();
+  let added = 0;
+  for (const line of lines) {
+    const parts = line.split(/[—–\-=:,;]\s*|\t+/).map(p => p.trim()).filter(Boolean);
+    if (!parts.length) continue;
+    const [french, english, type] = parts;
+    if (!french) continue;
+    list.unshift({
+      id: `word-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      french, english: english || '', type: type || 'vocab', createdAt: Date.now()
+    });
+    added += 1;
+  }
+  saveWordList(list);
+  return added;
+}
+
+/* ------------------- Review (spaced repetition) ------------------- */
+
+function reviewQueue(filter = state.reviewFilter) {
+  const words = getWordList();
+  const now = Date.now();
+  if (filter === 'all') return [...words];
+  if (filter === 'fresh') return words.filter(w => !w.lastReviewed);
+  return words.filter(w => spacedRepetitionBucket(w, now) === filter);
+}
+
+function showReview() {
+  if (!state.analytics) return;
+  $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = true;
+  $('wordlist-view').hidden = true; $('review-view').hidden = false;
+  document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+  $('review-button').classList.add('active');
+  closeMobileLibrary();
+  state.view = 'review';
+  state.reviewIndex = 0;
+  state.reviewRevealed = false;
+  document.title = 'Review · Le Petit Atelier Français';
+  renderLibrary();
+  renderReview();
+}
+
+function renderReview() {
+  const queue = reviewQueue();
+  const total = queue.length;
+  if (!total) {
+    $('review-view').innerHTML = `<div class="review-empty"><span>🌿</span><b>No words in this queue.</b><p>Try another filter, or add some words from <a href="#wordlist">My word list</a>.</p></div>`;
+    return;
+  }
+  if (state.reviewIndex >= total) state.reviewIndex = total - 1;
+  if (state.reviewIndex < 0) state.reviewIndex = 0;
+  const word = queue[state.reviewIndex];
+  const dueAt = word.dueAt ? new Date(word.dueAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  const filterChip = (value, label) => `<button class="review-tab ${state.reviewFilter === value ? 'active' : ''}" data-rv-filter="${value}">${label}</button>`;
+  const head = `${state.reviewIndex + 1} of ${total}`;
+  const speak = `<button class="speak-button" type="button" id="review-speak" data-speak="${escapeHtml(word.french)}" aria-label="Pronounce" title="Pronounce">🔊</button>`;
+  $('review-view').innerHTML = `
+    <header class="review-hero">
+      <div>
+        <span class="kicker">La révision</span>
+        <h2>Review due words</h2>
+        <p>Spaced repetition picks the next card based on how well you remembered it last time. Speak the word aloud, then reveal the meaning.</p>
+      </div>
+      <div class="review-tabs">${filterChip('due', 'Due now')} ${filterChip('fresh', 'New')} ${filterChip('soon', 'Soon')} ${filterChip('later', 'Mastered')} ${filterChip('all', 'All')}</div>
+    </header>
+    <div class="review-stage">
+      <div class="review-card-content">
+        <div>${speak}<strong style="margin-left:8px;color:var(--blue-2);">${escapeHtml(word.type || 'vocab')}</strong></div>
+        <div class="french-word">${inlineMarkdown(word.french)}</div>
+        ${state.reviewRevealed ? `<div class="english-word">${inlineMarkdown(word.english || '—')}</div>` : `<div class="reveal-hint">Say it aloud, then reveal the meaning.</div>`}
+      </div>
+    </div>
+    <div class="review-controls">
+      <button class="button paper" id="review-prev" type="button" ${state.reviewIndex <= 0 ? 'disabled' : ''}>← Previous</button>
+      <button class="button blue" id="review-reveal" type="button">${state.reviewRevealed ? 'Hide meaning' : 'Reveal meaning'}</button>
+      <button class="button paper" id="review-skip" type="button">Skip →</button>
+    </div>
+    <div class="review-controls">
+      <button class="button red" data-quality="1" type="button">Forgot</button>
+      <button class="button paper" data-quality="2" type="button">Hard</button>
+      <button class="button paper" data-quality="3" type="button">Good</button>
+      <button class="button blue" data-quality="4" type="button">Easy</button>
+    </div>
+    <div class="review-progress">
+      <span>${head} · next due ${dueAt}</span>
+      <span class="progress-fill-mini"><b style="width:${percent(state.reviewIndex + 1, total)}%"></b></span>
+    </div>`;
+  $('review-prev').addEventListener('click', () => { if (state.reviewIndex > 0) { state.reviewIndex -= 1; state.reviewRevealed = false; renderReview(); } });
+  $('review-reveal').addEventListener('click', () => { state.reviewRevealed = !state.reviewRevealed; renderReview(); });
+  $('review-skip').addEventListener('click', () => { state.reviewIndex = Math.min(total - 1, state.reviewIndex + 1); state.reviewRevealed = false; renderReview(); });
+  $('review-speak').addEventListener('click', event => speak(word.french, event.currentTarget));
+  $('review-view').querySelectorAll('[data-rv-filter]').forEach(button => button.addEventListener('click', () => {
+    state.reviewFilter = button.dataset.rvFilter;
+    state.reviewIndex = 0;
+    state.reviewRevealed = false;
+    replaceRoute({ reviewFilter: state.reviewFilter });
+    renderReview();
+  }));
+  $('review-view').querySelectorAll('[data-quality]').forEach(button => button.addEventListener('click', () => {
+    const list = getWordList();
+    const index = list.findIndex(item => item.id === word.id);
+    if (index < 0) return;
+    recordReview(list[index], Number(button.dataset.quality));
+    saveWordList(list);
+    recordActivity('review');
+    const newQueue = reviewQueue();
+    if (state.reviewIndex >= newQueue.length) state.reviewIndex = Math.max(0, newQueue.length - 1);
+    state.reviewRevealed = false;
+    showToast('Progress saved.', 'success');
+    renderReview();
+  }));
+}
+
+/* ------------------- Speech synthesis & dictionary ------------------- */
+
+let activeUtterance = null;
+
+function speak(text, button) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return;
+  if (!('speechSynthesis' in window)) {
+    showToast('Speech synthesis is not supported in this browser.', 'error');
+    return;
+  }
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(trimmed);
+    utterance.lang = 'fr-FR';
+    utterance.rate = 0.9;
+    const voices = window.speechSynthesis.getVoices();
+    const frenchVoice = voices.find(voice => voice.lang?.toLowerCase().startsWith('fr'));
+    if (frenchVoice) utterance.voice = frenchVoice;
+    utterance.onend = () => button?.classList.remove('playing');
+    utterance.onerror = () => button?.classList.remove('playing');
+    activeUtterance = utterance;
+    if (button) {
+      button.classList.add('playing');
+      button.disabled = true;
+      utterance.onend = () => { button.classList.remove('playing'); button.disabled = false; };
+      utterance.onerror = () => { button.classList.remove('playing'); button.disabled = false; };
+    }
+    window.speechSynthesis.speak(utterance);
+  } catch (error) {
+    showToast('Could not play pronunciation.', 'error');
+  }
+}
+
+const dictionaryCache = new Map();
+
+async function lookupWord(word) {
+  const key = normalizeFrench(word);
+  if (dictionaryCache.has(key)) return dictionaryCache.get(key);
+  const url = `https://fr.wiktionary.org/api/rest_v1/page/definitions/${encodeURIComponent(key)}`;
+  const fetchPromise = fetch(url, { headers: { Accept: 'application/json' } })
+    .then(async response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const fr = (data.fr || data.definitions || []).find(entry => entry.language === 'fr') || data.fr || null;
+      if (!fr || !fr.definitions?.length) throw new Error('No French definition');
+      return {
+        word: data.title || word,
+        partOfSpeech: fr.partOfSpeech || '',
+        pronunciation: fr.pronunciations?.[0]?.text || data.pronunciations?.[0]?.text || '',
+        definitions: fr.definitions.slice(0, 4).map(d => d.definition || d).filter(Boolean)
+      };
+    });
+  const fallback = Promise.all([
+    fetch(`https://fr.wiktionary.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=${encodeURIComponent(key)}&format=json&origin=*`).then(r => r.json()).catch(() => null),
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(key)}`).catch(() => null)
+  ]).then(([wk, en]) => {
+    const extract = wk?.query?.pages && Object.values(wk.query.pages)[0]?.extract;
+    if (extract) return { word, partOfSpeech: '', pronunciation: '', definitions: [extract.replace(/<[^>]+>/g, ' ').slice(0, 360)] };
+    throw new Error('No definition found');
+  });
+  const promise = fetchPromise.catch(() => fallback);
+  dictionaryCache.set(key, promise);
+  return promise;
+}
+
+let activeDictionary = null;
+
+function openDictionary(target, word) {
+  closeDictionary();
+  const trimmed = String(word || '').trim();
+  if (!trimmed) return;
+  const rect = target.getBoundingClientRect();
+  const pop = document.createElement('div');
+  pop.className = 'dictionary-popover';
+  pop.style.top = `${rect.bottom + window.scrollY + 6}px`;
+  pop.style.left = `${Math.min(window.innerWidth - 360, rect.left + window.scrollX)}px`;
+  pop.innerHTML = `<button class="close" type="button" aria-label="Close">×</button><h4>${escapeHtml(trimmed)}</h4><div class="loading">Looking up definition…</div>`;
+  document.body.appendChild(pop);
+  activeDictionary = pop;
+  pop.querySelector('.close').addEventListener('click', closeDictionary);
+  setTimeout(() => {
+    document.addEventListener('click', outsideClickHandler, { once: true });
+  }, 0);
+  lookupWord(trimmed).then(result => {
+    if (activeDictionary !== pop) return;
+    pop.innerHTML = `
+      <button class="close" type="button" aria-label="Close">×</button>
+      <h4>${escapeHtml(result.word)} <span class="pos">${escapeHtml(result.partOfSpeech || '')}</span></h4>
+      ${result.pronunciation ? `<div class="pronunciation">[${escapeHtml(result.pronunciation)}]</div>` : ''}
+      <ol>${result.definitions.map(def => `<li>${escapeHtml(def.replace(/<[^>]+>/g, ' ').slice(0, 320))}</li>`).join('')}</ol>
+      <div class="source">
+        <button class="icon-action" type="button" data-speak="${escapeHtml(trimmed)}">🔊 Pronounce</button>
+        <a href="https://youglish.com/pronounce/${encodeURIComponent(trimmed)}/french" target="_blank" rel="noopener">Youglish (French)</a>
+        <a href="https://forvo.com/word/${encodeURIComponent(trimmed)}/#fr" target="_blank" rel="noopener">Forvo</a>
+        <a href="https://fr.wiktionary.org/wiki/${encodeURIComponent(trimmed)}" target="_blank" rel="noopener">Wiktionary</a>
+      </div>`;
+    pop.querySelector('.close').addEventListener('click', closeDictionary);
+    pop.querySelector('[data-speak]').addEventListener('click', event => speak(trimmed, event.currentTarget));
+  }).catch(error => {
+    if (activeDictionary !== pop) return;
+    pop.innerHTML = `<button class="close" type="button" aria-label="Close">×</button>
+      <h4>${escapeHtml(trimmed)}</h4>
+      <div class="error">Definition not available offline. Try one of the external sources:</div>
+      <div class="source">
+        <button class="icon-action" type="button" data-speak="${escapeHtml(trimmed)}">🔊 Pronounce</button>
+        <a href="https://youglish.com/pronounce/${encodeURIComponent(trimmed)}/french" target="_blank" rel="noopener">Youglish (French)</a>
+        <a href="https://forvo.com/word/${encodeURIComponent(trimmed)}/#fr" target="_blank" rel="noopener">Forvo</a>
+        <a href="https://fr.wiktionary.org/wiki/${encodeURIComponent(trimmed)}" target="_blank" rel="noopener">Wiktionary</a>
+      </div>`;
+    pop.querySelector('.close').addEventListener('click', closeDictionary);
+    pop.querySelector('[data-speak]').addEventListener('click', event => speak(trimmed, event.currentTarget));
+  });
+}
+
+function outsideClickHandler(event) {
+  if (activeDictionary && !activeDictionary.contains(event.target)) closeDictionary();
+}
+
+function closeDictionary() {
+  if (activeDictionary) { activeDictionary.remove(); activeDictionary = null; }
+}
+
+/* ------------------- Toast notifications ------------------- */
+
+let toastTimeout = null;
+function showToast(message, kind = 'success') {
+  closeToast();
+  const tpl = $('toast-template').content.firstElementChild.cloneNode(true);
+  tpl.textContent = message;
+  tpl.classList.add(kind);
+  document.body.appendChild(tpl);
+  toastTimeout = setTimeout(() => { tpl.remove(); }, 2600);
+}
+function closeToast() {
+  document.querySelectorAll('.toast').forEach(node => node.remove());
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = null;
 }
 
 function renderDashboard() {
@@ -485,6 +1037,9 @@ function renderDashboard() {
   const progressMap = allProgress();
   const activity = getActivity();
   const streak = streakStats(activity);
+  const wordList = getWordList();
+  const now = Date.now();
+  const wordListDue = wordList.filter(word => spacedRepetitionBucket(word, now) === 'due').length;
   const learnedWords = analytics.entities.vocabulary.filter(item => progressMap.get(item.slug)?.learnedWords.includes(item.index));
   const learnedGrammar = analytics.entities.grammar.filter(item => progressMap.get(item.slug)?.learnedGrammar.includes(item.index));
   const learnedTokens = learnedTokenSet(progressMap);
@@ -497,8 +1052,9 @@ function renderDashboard() {
   const examCorrect = analytics.entities.lessons.reduce((sum, lesson) => sum + (progressMap.get(lesson.slug).quizAttempted ? progressMap.get(lesson.slug).quizScore : 0), 0);
   const nextWords = analytics.commonWords.filter(item => !learnedTokens.has(item.word)).slice(0, 18);
   $('dashboard-view').innerHTML = `<header class="dashboard-hero"><div><span class="kicker">Le tableau de bord</span><h2>Your French, in motion.</h2><p>Progress is stored privately in this browser. Export a backup before clearing browser data or changing devices.</p></div><div class="dashboard-actions"><button class="button paper" id="export-progress" type="button">Export progress</button><label class="button blue import-label">Import progress<input id="import-progress" type="file" accept="application/json,.json"></label></div></header>
-  <div class="metric-grid">${metricCard('🔥', 'Current streak', `${streak.current} day${streak.current === 1 ? '' : 's'}`, `Longest: ${streak.longest} days`)}${metricCard('📚', 'Vocabulary learned', `${learnedWords.length}/${totals.vocabulary}`, `${percent(learnedWords.length, totals.vocabulary)}% of added vocabulary`)}${metricCard('🧩', 'Grammar learned', `${learnedGrammar.length}/${totals.grammar}`, `${percent(learnedGrammar.length, totals.grammar)}% of added patterns`)}${metricCard('🇫🇷', 'Common-5,000 learned', `${knownCommon.length}/5,000`, `${percent(knownCommon.length, 5000)}% personal coverage`)}</div>
+  <div class="metric-grid">${metricCard('🔥', 'Current streak', `${streak.current} day${streak.current === 1 ? '' : 's'}`, `Longest: ${streak.longest} days`)}${metricCard('📚', 'Vocabulary learned', `${learnedWords.length}/${totals.vocabulary}`, `${percent(learnedWords.length, totals.vocabulary)}% of added vocabulary`)}${metricCard('🧩', 'Grammar learned', `${learnedGrammar.length}/${totals.grammar}`, `${percent(learnedGrammar.length, totals.grammar)}% of added patterns`)}${metricCard('🗒️', 'My word list', `${wordList.length} words`, `${wordListDue} due for review`)}</div>
   <section class="dashboard-card activity-card"><div class="card-heading"><div><span class="kicker">365 jours</span><h3>Learning activity</h3></div><span>${Object.values(activity).reduce((sum, entry) => sum + activityCount(entry), 0)} actions</span></div><div class="activity-scroll"><div class="activity-grid">${activityGrid(activity)}</div></div><div class="activity-legend"><span>Less</span>${[0,1,2,3,4].map(level => `<i class="activity-cell level-${level}"></i>`).join('')}<span>More</span></div></section>
+  <section class="dashboard-card wordlist-card"><div class="card-heading"><div><span class="kicker">Mon carnet</span><h3>My word list snapshot</h3></div><a class="button paper" href="#view=review" id="dashboard-review-link">Review due →</a></div><div class="snapshot-grid"><span><b>${wordList.length}</b> total words</span><span><b>${wordListDue}</b> due now</span><span><b>${wordList.filter(w => spacedRepetitionBucket(w, now) === 'fresh').length}</b> new</span><span><b>${wordList.filter(w => spacedRepetitionBucket(w, now) === 'later').length}</b> mastered</span></div><p class="source-note">Use the <a href="#view=wordlist">word list</a> to add vocabulary from any lesson or paste your own. The review queue reschedules each card based on how confidently you recalled it.</p></section>
   <div class="dashboard-columns"><section class="dashboard-card"><div class="card-heading"><div><span class="kicker">Maîtrise</span><h3>Topic progress</h3></div></div>${progressRow('Transcript translations', revealed, totals.transcriptLines)}${progressRow('Vocabulary', learnedWords.length, totals.vocabulary)}${progressRow('Grammar', learnedGrammar.length, totals.grammar)}${progressRow('Flashcards', knownCards, totals.flashcards)}${progressRow('Exam answers', examCorrect, totals.examQuestions)}</section>
   <section class="dashboard-card"><div class="card-heading"><div><span class="kicker">Corpus</span><h3>Content snapshot</h3></div></div><div class="snapshot-grid"><span><b>${totals.transcriptTokens}</b> French tokens</span><span><b>${totals.uniqueTranscriptWords}</b> unique words</span><span><b>${totals.transcriptLines}</b> translated lines</span><span><b>${totals.lessons}</b> lessons</span></div><p class="source-note">The published catalogue contains <b>${totals.catalogueCommonWords}</b> of the benchmark’s 5,000 words (${totals.catalogueCoveragePercent}%). This is catalogue coverage, not personal mastery.</p></section></div>
   <div class="dashboard-columns"><section class="dashboard-card"><div class="card-heading"><div><span class="kicker">EDA</span><h3>Most frequent transcript words</h3></div></div>${barChart(analytics.distributions.topTranscriptWords, 12)}</section><section class="dashboard-card"><div class="card-heading"><div><span class="kicker">EDA</span><h3>Word-length distribution</h3></div></div>${barChart(analytics.distributions.wordLength.map(item => ({ label: `${item.label} letters`, count: item.count })), 14)}</section></div>
@@ -545,7 +1101,14 @@ function bindDashboard(progressMap) {
 }
 
 function exportProgress() {
-  const payload = { schemaVersion: 1, exportedAt: new Date().toISOString(), progress: Object.fromEntries(state.manifest.lessons.map(lesson => [lesson.slug, getProgress(lesson.slug)])), activity: getActivity(), frequencyKnown: getFrequencyKnown() };
+  const payload = {
+    schemaVersion: 2,
+    exportedAt: new Date().toISOString(),
+    progress: Object.fromEntries(state.manifest.lessons.map(lesson => [lesson.slug, getProgress(lesson.slug)])),
+    activity: getActivity(),
+    frequencyKnown: getFrequencyKnown(),
+    wordlist: getWordList()
+  };
   const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json' });
   const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `atelier-progress-${localDateKey()}.json`; link.click(); URL.revokeObjectURL(link.href);
 }
@@ -554,10 +1117,11 @@ async function importProgress(event) {
   const file = event.target.files?.[0]; if (!file) return;
   try {
     const payload = JSON.parse(await file.text());
-    if (payload.schemaVersion !== 1 || typeof payload.progress !== 'object') throw new Error('This is not an Atelier progress export.');
+    if (payload.schemaVersion > 2 || typeof payload.progress !== 'object') throw new Error('This is not an Atelier progress export.');
     state.manifest.lessons.forEach(lesson => { if (payload.progress[lesson.slug]) localStorage.setItem(progressKey(lesson.slug), JSON.stringify({ ...emptyProgress(), ...payload.progress[lesson.slug] })); });
     if (payload.activity && typeof payload.activity === 'object') localStorage.setItem(ACTIVITY_KEY, JSON.stringify(payload.activity));
     if (Array.isArray(payload.frequencyKnown)) localStorage.setItem(FREQUENCY_KEY, JSON.stringify(payload.frequencyKnown.map(normalizeFrench)));
+    if (Array.isArray(payload.wordlist)) saveWordList(payload.wordlist);
     recordActivity('import'); renderDashboard(); $('import-status').textContent = `Imported ${file.name} successfully.`;
   } catch (error) {
     $('import-status').textContent = `Import failed: ${error.message}`;
@@ -578,17 +1142,65 @@ function initTheme() {
 
 $('library-search').addEventListener('input', event => { state.search = event.target.value; renderLibrary(); });
 $('mobile-library-button').addEventListener('click', () => { const open = $('library-panel').classList.toggle('open'); $('mobile-library-button').setAttribute('aria-expanded', String(open)); });
-$('dashboard-button').addEventListener('click', () => { location.hash = 'dashboard'; });
+$('dashboard-button').addEventListener('click', () => { location.hash = 'view=dashboard'; });
+$('wordlist-button').addEventListener('click', () => { location.hash = 'view=wordlist'; });
+$('review-button').addEventListener('click', () => { location.hash = 'view=review'; });
 $('theme-button').addEventListener('click', () => { const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; localStorage.setItem('atelier-theme', next); $('theme-button').textContent = next === 'dark' ? '☀' : '☾'; });
 $('reset-lesson').addEventListener('click', () => { localStorage.removeItem(progressKey()); state.cardIndex = 0; state.cardRevealed = false; updateProgress(); renderActiveTab(); });
 $('retry-button').addEventListener('click', loadManifest);
 window.addEventListener('hashchange', async () => {
   if (!state.manifest) return;
   const route = readRoute();
-  if (route.dashboard) { showDashboard(); return; }
+  if (route.view === 'dashboard') { showDashboard(); return; }
+  if (route.view === 'wordlist') { showWordList(); return; }
+  if (route.view === 'review') { showReview(); return; }
+  if (route.wordlistFilter) state.wordlistFilter = route.wordlistFilter;
+  if (route.reviewFilter) state.reviewFilter = route.reviewFilter;
   const item = state.manifest.lessons.find(lesson => lesson.slug === route.slug) || state.selected || state.manifest.lessons[0];
+  if (!item) return;
   if (item.slug !== state.selected?.slug || $('lesson-view').hidden) await loadLesson(item, route.tab);
   else if (route.tab && availableTabs().some(tab => tab.id === route.tab)) { state.activeTab = route.tab; renderTabs(); renderActiveTab(); }
+});
+
+/* ------------------- Service worker & PWA install ------------------- */
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(new URL('sw.js', import.meta.url)).catch(error => console.warn('Service worker registration failed:', error));
+  });
+}
+
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  state.installEvent = event;
+  const btn = $('install-button');
+  if (btn) btn.hidden = false;
+});
+
+const installButton = $('install-button');
+if (installButton) {
+  installButton.addEventListener('click', async () => {
+    if (!state.installEvent) return;
+    state.installEvent.prompt();
+    await state.installEvent.userChoice;
+    state.installEvent = null;
+    installButton.hidden = true;
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  const btn = $('install-button');
+  if (btn) btn.hidden = true;
+  showToast('Installed! Open it from your home screen.', 'success');
+});
+
+document.addEventListener('click', event => {
+  const link = event.target.closest('[data-lookup]');
+  if (link) { event.preventDefault(); openDictionary(link, link.dataset.lookup); }
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') closeDictionary();
 });
 
 initTheme();

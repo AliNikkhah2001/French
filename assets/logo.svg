@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Le Petit Atelier Français logo">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a4b83"/>
+      <stop offset="100%" stop-color="#245a91"/>
+    </linearGradient>
+    <linearGradient id="tower" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fbf5e9"/>
+      <stop offset="100%" stop-color="#e8e0cf"/>
+    </linearGradient>
+    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f5c84b"/>
+      <stop offset="100%" stop-color="#e8b833"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff7c5" stop-opacity=".9"/>
+      <stop offset="100%" stop-color="#fff7c5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#sky)"/>
+  <circle cx="380" cy="120" r="60" fill="url(#glow)"/>
+  <circle cx="380" cy="120" r="22" fill="#fff7c5"/>
+  <g fill="#e1534c" opacity=".35">
+    <circle cx="70" cy="90" r="3"/>
+    <circle cx="160" cy="60" r="2"/>
+    <circle cx="240" cy="110" r="2.5"/>
+    <circle cx="100" cy="170" r="2"/>
+    <circle cx="50" cy="220" r="2.5"/>
+    <circle cx="200" cy="200" r="2"/>
+    <circle cx="450" cy="60" r="2"/>
+    <circle cx="470" cy="180" r="2.5"/>
+    <circle cx="420" cy="240" r="2"/>
+  </g>
+  <g fill="url(#tower)">
+    <path d="M256 80 L292 350 L220 350 Z"/>
+    <path d="M220 350 L292 350 L320 430 L192 430 Z"/>
+    <path d="M192 430 L320 430 L356 460 L156 460 Z"/>
+  </g>
+  <g fill="#153b67" opacity=".85">
+    <path d="M240 140 L272 140 L268 155 L244 155 Z"/>
+    <path d="M234 180 L278 180 L274 198 L238 198 Z"/>
+    <path d="M228 220 L284 220 L280 240 L232 240 Z"/>
+    <path d="M222 270 L290 270 L286 290 L226 290 Z"/>
+  </g>
+  <rect x="252" y="80" width="8" height="14" fill="#e1534c"/>
+  <line x1="256" y1="80" x2="256" y2="60" stroke="#fbf5e9" stroke-width="3"/>
+  <rect x="253" y="55" width="6" height="8" fill="#e1534c"/>
+  <g stroke="#153b67" stroke-width="3" fill="none" opacity=".8">
+    <path d="M256 60 L240 100"/>
+    <path d="M256 60 L272 100"/>
+    <path d="M256 90 L235 130"/>
+    <path d="M256 90 L277 130"/>
+  </g>
+  <g stroke="#153b67" stroke-width="3" fill="none">
+    <path d="M220 350 L292 350"/>
+    <path d="M192 430 L320 430"/>
+    <path d="M220 350 L192 430"/>
+    <path d="M292 350 L320 430"/>
+  </g>
+  <g stroke="#153b67" stroke-width="1.6" fill="none" opacity=".5">
+    <line x1="240" y1="370" x2="272" y2="370"/>
+    <line x1="232" y1="395" x2="280" y2="395"/>
+    <line x1="220" y1="420" x2="292" y2="420"/>
+  </g>
+  <rect x="156" y="460" width="200" height="20" fill="url(#base)"/>
+  <rect x="148" y="476" width="216" height="6" rx="3" fill="#153b67"/>
+  <g transform="translate(36 380)" fill="#fbf5e9">
+    <text x="0" y="0" font-family="Georgia, serif" font-weight="700" font-size="36" letter-spacing="-1">ÇA</text>
+  </g>
+  <g transform="translate(36 420)" fill="#fbf5e9" opacity=".75">
+    <text x="0" y="0" font-family="Inter, sans-serif" font-weight="600" font-size="12" letter-spacing="2">FRENCH</text>
+  </g>
+</svg>
