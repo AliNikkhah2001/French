@@ -1207,5 +1207,34 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape') closeDictionary();
 });
 
+// iOS standalone detection — adds minimal app chrome
+function updateStandalone() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(location.search).has('standalone');
+  document.documentElement.classList.toggle('is-standalone', isStandalone);
+  const tabbar = $('ios-tabbar');
+  if (tabbar) tabbar.hidden = !isStandalone;
+  updateIosTab();
+}
+function updateIosTab() {
+  const view = readRoute().view;
+  document.querySelectorAll('.ios-tab').forEach(btn => {
+    const tab = btn.dataset.iosTab;
+    const active = (tab === 'lessons' && view === 'lesson') || tab === view;
+    btn.classList.toggle('active', active);
+  });
+}
+window.matchMedia('(display-mode: standalone)').addEventListener?.('change', updateStandalone);
+document.querySelectorAll('.ios-tab').forEach(btn => btn.addEventListener('click', () => {
+  const tab = btn.dataset.iosTab;
+  if (tab === 'lessons') {
+    if (state.manifest?.lessons?.[0]) location.hash = new URLSearchParams({ lesson: state.manifest.lessons[0].slug }).toString();
+    else location.hash = '';
+    // on mobile, open library as lesson picker
+    if (window.innerWidth <= 760) { $('library-panel')?.classList.add('open'); $('mobile-library-button')?.setAttribute('aria-expanded', 'true'); }
+  } else location.hash = `view=${tab}`;
+}));
+window.addEventListener('hashchange', updateIosTab);
+
 initTheme();
+updateStandalone();
 loadManifest();

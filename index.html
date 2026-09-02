@@ -7,11 +7,12 @@
   <meta name="theme-color" content="#153b67" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14202b" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Atelier">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="application-name" content="Atelier Français">
   <meta name="format-detection" content="telephone=no">
+  <meta name="apple-mobile-web-app-title" content="Atelier Français">
 
   <link rel="manifest" href="assets/manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="assets/icons/icon.svg">
@@ -124,6 +125,21 @@
   </div>
 
   <button class="install-button" id="install-button" type="button" hidden>📲 Install app</button>
+
+  <nav class="ios-tabbar" id="ios-tabbar" aria-label="Primary navigation" hidden>
+    <button type="button" data-ios-tab="lessons" class="ios-tab active" aria-label="Lessons">
+      <span class="ios-tab-icon">📚</span><span class="ios-tab-label">Lessons</span>
+    </button>
+    <button type="button" data-ios-tab="wordlist" class="ios-tab" aria-label="Word list">
+      <span class="ios-tab-icon">🗒️</span><span class="ios-tab-label">Words</span>
+    </button>
+    <button type="button" data-ios-tab="review" class="ios-tab" aria-label="Review">
+      <span class="ios-tab-icon">🎯</span><span class="ios-tab-label">Review</span>
+    </button>
+    <button type="button" data-ios-tab="dashboard" class="ios-tab" aria-label="Progress">
+      <span class="ios-tab-icon">▦</span><span class="ios-tab-label">Progress</span>
+    </button>
+  </nav>
 
   <template id="empty-library-template">
     <div class="empty-library"><span>🕵️‍♀️</span><b>No lesson found.</b><p>Try a shorter search or another content type.</p></div>
