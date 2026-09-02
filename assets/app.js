@@ -1166,7 +1166,11 @@ window.addEventListener('hashchange', async () => {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(new URL('sw.js', import.meta.url)).catch(error => console.warn('Service worker registration failed:', error));
+    // Try root scope first (controls entire /French/ site), fallback to assets scope
+    const rootSw = new URL('../sw.js', import.meta.url);
+    navigator.serviceWorker.register(rootSw, { scope: new URL('..', import.meta.url).pathname }).catch(() => {
+      navigator.serviceWorker.register(new URL('sw.js', import.meta.url)).catch(error => console.warn('Service worker registration failed:', error));
+    });
   });
 }
 

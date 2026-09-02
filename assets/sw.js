@@ -1,5 +1,5 @@
-const CACHE_NAME = 'atelier-francais-v2';
-const PRECACHE = [
+const CACHE_NAME = 'atelier-francais-v3';
+const PRECACHE_URLS = [
   './',
   'index.html',
   'assets/styles.css',
@@ -14,7 +14,8 @@ const PRECACHE = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE)).then(() => self.skipWaiting()));
+  const toCache = PRECACHE_URLS.map(url => new URL(url, self.location).href);
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(toCache)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {
@@ -30,22 +31,30 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (url.origin !== location.origin) return;
 
+  // Navigation requests: network first, fallback to cached index.html
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).then(response => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        }
         return response;
-      }).catch(() => caches.match('index.html'))
+      }).catch(async () => {
+        const cached = await caches.match(request) || await caches.match(new URL('index.html', self.location)) || await caches.match(new URL('./', self.location)) || await caches.match('/French/') || await caches.match('/French/index.html');
+        return cached || Response.error();
+      })
     );
     return;
   }
 
+  // For assets / content / data: cache-first, network fallback
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached;
       return fetch(request).then(response => {
-        if (response.ok && (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/content/') || url.pathname.startsWith('/data/'))) {
+        // cache successful responses for app assets
+        if (response.ok && (url.pathname.includes('/assets/') || url.pathname.includes('/content/') || url.pathname.includes('/data/'))) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         }

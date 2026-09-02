@@ -199,6 +199,8 @@ async function build() {
   await mkdir(join(distRoot, 'data'), { recursive: true });
   await cp(join(projectRoot, 'assets'), join(distRoot, 'assets'), { recursive: true });
   await cp(join(projectRoot, 'index.html'), join(distRoot, 'index.html'));
+  // Copy SW to root for correct scope (/French/ instead of /French/assets/)
+  await cp(join(projectRoot, 'assets', 'sw.js'), join(distRoot, 'sw.js'));
   await writeFile(join(distRoot, '.nojekyll'), '');
   for (const record of records) {
     const destination = join(distRoot, record.item.path);

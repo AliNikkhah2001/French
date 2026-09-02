@@ -2,9 +2,11 @@
   "name": "Le Petit Atelier Français",
   "short_name": "Atelier Français",
   "description": "A playful, Markdown-powered French learning platform for podcasts, books, articles, audio, flashcards, and exams.",
-  "start_url": "./",
-  "scope": "./",
+  "id": "/French/",
+  "start_url": "/French/",
+  "scope": "/French/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
   "background_color": "#fbf5e9",
   "theme_color": "#153b67",
@@ -13,22 +15,34 @@
   "categories": ["education", "books", "lifestyle"],
   "icons": [
     {
-      "src": "assets/icons/icon-192.png",
+      "src": "/French/assets/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icons/icon-512.png",
+      "src": "/French/assets/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icons/icon.svg",
+      "src": "/French/assets/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Word list",
+      "url": "/French/#view=wordlist",
+      "icons": [{ "src": "/French/assets/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Review",
+      "url": "/French/#view=review",
+      "icons": [{ "src": "/French/assets/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
