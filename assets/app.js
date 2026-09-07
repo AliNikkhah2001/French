@@ -4,6 +4,7 @@ import { dateFromKey, localDateKey, normalizeFrench } from './analytics-utils.js
 const ACTIVITY_KEY = 'atelier-activity-v1';
 const FREQUENCY_KEY = 'atelier-frequency-known-v1';
 const WORDLIST_KEY = 'atelier-wordlist-v1';
+const LAST_KEY = 'atelier-last-lesson';
 const state = {
   manifest: null,
   analytics: null,
@@ -49,6 +50,7 @@ function externalUrl(value) {
 
 function readRoute() {
   const raw = location.hash.replace(/^#/, '');
+  if (!raw || raw === 'home') return { view: 'home', slug: null, tab: null };
   if (raw === 'dashboard') return { view: 'dashboard', slug: null, tab: null };
   if (raw === 'wordlist') return { view: 'wordlist', slug: null, tab: null };
   if (raw === 'review') return { view: 'review', slug: null, tab: null };
@@ -150,6 +152,7 @@ async function loadManifest() {
     if (route.view === 'dashboard') showDashboard();
     else if (route.view === 'wordlist') showWordList();
     else if (route.view === 'review') showReview();
+    else if (route.view === 'home') showHome();
     else {
       const selected = state.manifest.lessons.find(item => item.slug === route.slug) || state.manifest.lessons[0];
       await loadLesson(selected, route.tab);
@@ -164,6 +167,7 @@ function showLoading() {
   $('loading-state').hidden = false;
   $('error-state').hidden = true;
   $('lesson-view').hidden = true;
+  $('home-view').hidden = true;
   $('dashboard-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
@@ -174,6 +178,7 @@ function showLoading() {
 function showError(message) {
   $('loading-state').hidden = true;
   $('lesson-view').hidden = true;
+  $('home-view').hidden = true;
   $('dashboard-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
@@ -185,11 +190,13 @@ function showLesson() {
   $('loading-state').hidden = true;
   $('error-state').hidden = true;
   $('dashboard-view').hidden = true;
+  $('home-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
   $('lesson-view').hidden = false;
   document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
   $('dashboard-button').classList.remove('active');
+  document.documentElement.classList.remove('view-home');
   state.view = 'lesson';
 }
 
@@ -230,6 +237,122 @@ function renderLibrary() {
   }));
 }
 
+/* ------------------- Home (history summary) ------------------- */
+
+const HOME_EMBLEM = '<svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="home-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2a63a0"/><stop offset="100%" stop-color="#1a4a80"/></linearGradient></defs><rect width="64" height="64" rx="18" fill="url(#home-bg)"/><path d="M14 34 16.77 26.3 19.54 22.96 22.31 20.81 25.08 19.37 27.85 18.48 30.62 18.05 33.38 18.05 36.15 18.48 38.92 19.37 41.69 20.81 44.46 22.96 47.23 26.3 50 34 50 34 47.23 31.78 44.46 30.09 41.69 28.83 38.92 27.92 36.15 27.33 33.38 27.04 30.62 27.04 27.85 27.33 25.08 27.92 22.31 28.83 19.54 30.09 16.77 31.78 14 34 Z" fill="#f5eddc"/><path d="M14 34 16.77 29.32 19.54 26.5 22.31 24.58 25.08 23.27 27.85 22.45 30.62 22.05 33.38 22.05 36.15 22.45 38.92 23.27 41.69 24.58 44.46 26.5 47.23 29.32 50 34" fill="none" stroke="#c79a5b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 34 16.77 30.45 19.54 28.05 22.31 26.35 25.08 25.16 27.85 24.41 30.62 24.05 33.38 24.05 36.15 24.41 38.92 25.16 41.69 26.35 44.46 28.05 47.23 30.45 50 34" fill="none" stroke="#c79a5b" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function lessonProgress(item) {
+  const progress = getProgress(item.slug);
+  const counts = item.counts || {};
+  const total = counts.transcript + counts.vocabulary + counts.grammar + counts.flashcards + counts.exam;
+  const done = progress.revealed.length + progress.learnedWords.length + progress.learnedGrammar.length + progress.known.length + (progress.quizAttempted ? (counts.exam || 0) : 0);
+  return percent(done, total);
+}
+
+function lastLesson() {
+  const slug = localStorage.getItem(LAST_KEY);
+  return state.manifest?.lessons.find(item => item.slug === slug) || null;
+}
+
+function renderHomeFilters() {
+  const types = ['all', ...new Set(state.manifest.lessons.map(item => item.type))];
+  $('home-filters').innerHTML = types.map(type => `<button class="filter-chip ${type === state.type ? 'active' : ''}" type="button" data-type="${escapeHtml(type)}">${escapeHtml(type === 'all' ? 'All' : type)}</button>`).join('');
+  $('home-filters').querySelectorAll('[data-type]').forEach(button => button.addEventListener('click', () => {
+    state.type = button.dataset.type;
+    renderHomeFilters();
+    renderHomeLibrary();
+  }));
+}
+
+function renderHomeLibrary() {
+  const lessons = filteredLessons();
+  $('home-count').textContent = `${lessons.length} ${lessons.length === 1 ? 'lesson' : 'lessons'} on today’s menu`;
+  if (!lessons.length) {
+    $('home-list').replaceChildren($('empty-library-template').content.cloneNode(true));
+    return;
+  }
+  $('home-list').innerHTML = lessons.map(item => {
+    const detail = [titleCase(item.type), item.level, item.duration].filter(Boolean).join(' · ');
+    const progress = lessonProgress(item);
+    return `<button class="lesson-card" type="button" data-slug="${escapeHtml(item.slug)}"><span class="lesson-card-emoji">${escapeHtml(item.emoji)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(detail)}</small>${progress > 0 ? `<span class="card-progress" aria-label="${progress}% complete" title="${progress}% complete"><i style="width:${progress}%"></i></span>` : ''}</span><span class="lesson-arrow">›</span></button>`;
+  }).join('');
+  $('home-list').querySelectorAll('[data-slug]').forEach(button => button.addEventListener('click', async () => {
+    const item = state.manifest.lessons.find(lesson => lesson.slug === button.dataset.slug);
+    if (item) await loadLesson(item);
+  }));
+}
+
+function renderHome() {
+  const activity = getActivity();
+  const streak = streakStats(activity);
+  const today = activityCount(activity[localDateKey()]);
+  const wordList = getWordList();
+  const now = Date.now();
+  const due = wordList.filter(word => spacedRepetitionBucket(word, now) === 'due').length;
+  const totals = state.analytics?.totals;
+  const hour = new Date().getHours();
+  const greeting = hour >= 6 && hour < 18 ? 'Bonjour' : 'Bonsoir';
+  const dateLabel = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const lastItem = lastLesson();
+  $('home-view').innerHTML = `
+    <section class="home-hero">
+      <div class="home-hero-inner">
+        <div class="home-emblem">${HOME_EMBLEM}</div>
+        <div>
+          <span class="kicker" style="color:rgba(246,241,231,.72)">${escapeHtml(dateLabel)}</span>
+          <h2>${greeting}.</h2>
+          <p>Votre petit atelier français — continuez lentement, un mot à la fois.</p>
+        </div>
+      </div>
+      <div class="home-hairline"></div>
+      <div class="home-facts">
+        <div class="home-fact"><b>${streak.current} ${streak.current === 1 ? 'jour' : 'jours'}</b><small>streak actuel</small></div>
+        <div class="home-fact"><b>${today}</b><small>actions aujourd’hui</small></div>
+        <div class="home-fact"><b>${totals ? totals.lessons : 0}</b><small>leçons</small></div>
+        <div class="home-fact"><b style="color:${streak.longest >= 7 ? '#f5c84b' : 'inherit'}">${streak.longest}</b><small>record</small></div>
+      </div>
+    </section>
+    <div class="home-stats">
+      <div class="home-stat"><a href="#view=review"><span><svg viewBox="0 0 24 24" width="15" height="15" style="vertical-align:-2px;display:inline-block"><use href="#ic-review"/></svg> Révision</span><b>${due}</b><small>due now</small></a></div>
+      <div class="home-stat"><a href="#view=wordlist"><span><svg viewBox="0 0 24 24" width="15" height="15" style="vertical-align:-2px;display:inline-block"><use href="#ic-words"/></svg> Mots</span><b>${wordList.length}</b><small>in your list</small></a></div>
+      <div class="home-stat"><span>🔥 Streak</span><b>${streak.current}</b><small>longest ${streak.longest}</small></div>
+      <div class="home-stat"><span>✨ Today</span><b>${today}</b><small>learning actions</small></div>
+    </div>
+    ${lastItem ? `<button class="home-continue" id="home-continue" type="button"><span class="hc-art">${escapeHtml(lastItem.emoji)}</span><span><small>Continue learning</small><b>${escapeHtml(lastItem.title)}</b></span><span class="hc-cta">›</span></button>` : ''}
+    <section class="home-library">
+      <h3>La bibliothèque</h3>
+      <p>Pick today’s adventure — search and filter the lessons, then tap to open.</p>
+      <label class="search-box"><span aria-hidden="true">⌕</span><input id="home-search" type="search" value="${escapeHtml(state.search)}" placeholder="Search lessons…" autocomplete="off"></label>
+      <div class="filter-scroller" id="home-filters" aria-label="Filter by content type"></div>
+      <div class="lesson-count" id="home-count"></div>
+      <div class="lesson-list" id="home-list" aria-live="polite"></div>
+    </section>`;
+  $('home-search')?.addEventListener('input', event => { state.search = event.target.value; renderHomeLibrary(); });
+  const continueButton = $('home-continue');
+  if (continueButton) continueButton.addEventListener('click', async () => { if (lastItem) await loadLesson(lastItem); });
+  renderHomeFilters();
+  renderHomeLibrary();
+}
+
+function showHome() {
+  if (!state.manifest) return;
+  $('loading-state').hidden = true;
+  $('error-state').hidden = true;
+  $('lesson-view').hidden = true;
+  $('dashboard-view').hidden = true;
+  $('wordlist-view').hidden = true;
+  $('review-view').hidden = true;
+  $('home-view').hidden = false;
+  document.documentElement.classList.add('view-home');
+  document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+  $('dashboard-button').classList.remove('active');
+  closeMobileLibrary();
+  state.view = 'home';
+  document.title = 'Le Petit Atelier Français';
+  renderHome();
+  renderLibrary();
+}
+
 async function loadLesson(item, requestedTab = null) {
   if (!item) return;
   showLoading();
@@ -238,6 +361,7 @@ async function loadLesson(item, requestedTab = null) {
     if (!response.ok) throw new Error(`Lesson returned ${response.status} at ${response.url}.`);
     state.selected = item;
     state.lesson = parseLesson(await response.text());
+    localStorage.setItem(LAST_KEY, item.slug);
     state.wordType = 'all';
     state.cardIndex = 0;
     state.cardRevealed = false;
@@ -558,7 +682,8 @@ function countDistribution(values) {
 function showDashboard() {
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = false;
-  $('wordlist-view').hidden = true; $('review-view').hidden = true;
+  $('home-view').hidden = true; $('wordlist-view').hidden = true; $('review-view').hidden = true;
+  document.documentElement.classList.remove('view-home');
   $('dashboard-button').classList.add('active'); closeMobileLibrary(); renderDashboard(); renderLibrary();
   document.title = 'Learning dashboard · Le Petit Atelier Français';
   state.view = 'dashboard';
@@ -611,7 +736,8 @@ function recordReview(word, quality) {
 function showWordList() {
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = true;
-  $('wordlist-view').hidden = false; $('review-view').hidden = true;
+  $('home-view').hidden = true; $('wordlist-view').hidden = false; $('review-view').hidden = true;
+  document.documentElement.classList.remove('view-home');
   document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
   $('wordlist-button').classList.add('active');
   closeMobileLibrary();
@@ -809,7 +935,8 @@ function reviewQueue(filter = state.reviewFilter) {
 function showReview() {
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = true;
-  $('wordlist-view').hidden = true; $('review-view').hidden = false;
+  $('home-view').hidden = true; $('wordlist-view').hidden = true; $('review-view').hidden = false;
+  document.documentElement.classList.remove('view-home');
   document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
   $('review-button').classList.add('active');
   closeMobileLibrary();
@@ -1154,6 +1281,7 @@ window.addEventListener('hashchange', async () => {
   if (route.view === 'dashboard') { showDashboard(); return; }
   if (route.view === 'wordlist') { showWordList(); return; }
   if (route.view === 'review') { showReview(); return; }
+  if (route.view === 'home') { showHome(); return; }
   if (route.wordlistFilter) state.wordlistFilter = route.wordlistFilter;
   if (route.reviewFilter) state.reviewFilter = route.reviewFilter;
   const item = state.manifest.lessons.find(lesson => lesson.slug === route.slug) || state.selected || state.manifest.lessons[0];
@@ -1219,19 +1347,15 @@ function updateIosTab() {
   const view = readRoute().view;
   document.querySelectorAll('.ios-tab').forEach(btn => {
     const tab = btn.dataset.iosTab;
-    const active = (tab === 'lessons' && view === 'lesson') || tab === view;
+    const active = (tab === 'home' && (view === 'home' || view === 'lesson')) || tab === view;
     btn.classList.toggle('active', active);
   });
 }
 window.matchMedia('(display-mode: standalone)').addEventListener?.('change', updateStandalone);
 document.querySelectorAll('.ios-tab').forEach(btn => btn.addEventListener('click', () => {
   const tab = btn.dataset.iosTab;
-  if (tab === 'lessons') {
-    if (state.manifest?.lessons?.[0]) location.hash = new URLSearchParams({ lesson: state.manifest.lessons[0].slug }).toString();
-    else location.hash = '';
-    // on mobile, open library as lesson picker
-    if (window.innerWidth <= 760) { $('library-panel')?.classList.add('open'); $('mobile-library-button')?.setAttribute('aria-expanded', 'true'); }
-  } else location.hash = `view=${tab}`;
+  if (tab === 'home') location.hash = '#home';
+  else location.hash = `view=${tab}`;
 }));
 window.addEventListener('hashchange', updateIosTab);
 

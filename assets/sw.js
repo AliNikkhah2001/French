@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atelier-francais-v3';
+const CACHE_NAME = 'atelier-francais-v4';
 const PRECACHE_URLS = [
   './',
   'index.html',
@@ -10,7 +10,10 @@ const PRECACHE_URLS = [
   'assets/icons/icon.svg',
   'assets/icons/icon-192.png',
   'assets/icons/icon-512.png',
-  'assets/favicon.png'
+  'assets/icons/icon-1024.png',
+  'assets/favicon.png',
+  'assets/favicon-16.png',
+  'assets/favicon-48.png'
 ];
 
 self.addEventListener('install', event => {

@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="A playful, Markdown-powered French learning platform for podcasts, books, articles, audio, flashcards, and exams.">
-  <meta name="theme-color" content="#153b67" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1a4a80" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14202b" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -18,6 +18,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/icons/icon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/favicon-48.png">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="192x192" href="assets/icons/icon-192.png">
@@ -25,31 +26,68 @@
 
   <title>Le Petit Atelier Français</title>
   <link rel="stylesheet" href="assets/styles.css">
+
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="ic-french" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M5 13 A7 7 0 0 0 19 13 A11 11 0 0 1 5 13 Z"/>
+    </symbol>
+    <symbol id="ic-words" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M8 7h8M8 11h6"/>
+    </symbol>
+    <symbol id="ic-review" viewBox="0 0 24 24">
+      <circle fill="none" stroke="currentColor" stroke-width="1.8" cx="12" cy="12" r="9"/>
+      <circle fill="none" stroke="currentColor" stroke-width="1.8" cx="12" cy="12" r="5"/>
+      <circle fill="currentColor" cx="12" cy="12" r="1.2"/>
+    </symbol>
+    <symbol id="ic-progress" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 20V10"/>
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M10 20V4"/>
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16 20v-6"/>
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M22 20V8"/>
+    </symbol>
+    <symbol id="ic-menu" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 6h16"/>
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 12h10"/>
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 18h16"/>
+    </symbol>
+  </svg>
 </head>
 <body>
-  <div class="tricolore" aria-hidden="true"><span></span><span></span><span></span></div>
-  <header class="topbar">
+  <header class="topbar" role="banner">
     <a class="brand" href="#" aria-label="Le Petit Atelier Français home">
       <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 64 64" width="42" height="42" focusable="false" aria-hidden="true">
-          <rect width="64" height="64" rx="12" fill="#153b67"/>
-          <path d="M32 12 L37 42 L27 42 Z" fill="#fbf5e9"/>
-          <path d="M27 42 L37 42 L41 49 L23 49 Z" fill="#fbf5e9"/>
-          <rect x="22" y="49" width="20" height="3" fill="#fbf5e9"/>
-          <path d="M30 22 L34 22 L33 26 L31 26 Z" fill="#153b67"/>
-          <path d="M29 28 L35 28 L34 32 L30 32 Z" fill="#153b67"/>
-          <path d="M28 33 L36 33 L35 37 L29 37 Z" fill="#153b67"/>
-          <rect x="31" y="9" width="2" height="4" fill="#e1534c"/>
-          <line x1="32" y1="12" x2="32" y2="9" stroke="#fbf5e9" stroke-width="1"/>
+        <svg viewBox="0 0 64 64" width="34" height="34" focusable="false" aria-hidden="true">
+          <defs>
+            <linearGradient id="brand-bg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#244f7d"/>
+              <stop offset="100%" stop-color="#1a4a80"/>
+            </linearGradient>
+          </defs>
+          <rect width="64" height="64" rx="16" fill="url(#brand-bg)"/>
+          <rect x="7" y="7" width="50" height="50" rx="12" fill="#ffffff" opacity="0.12"/>
+          <path d="M14 34 16.77 26.3 19.54 22.96 22.31 20.81 25.08 19.37 27.85 18.48 30.62 18.05 33.38 18.05 36.15 18.48 38.92 19.37 41.69 20.81 44.46 22.96 47.23 26.3 50 34 50 34 47.23 31.78 44.46 30.09 41.69 28.83 38.92 27.92 36.15 27.33 33.38 27.04 30.62 27.04 27.85 27.33 25.08 27.92 22.31 28.83 19.54 30.09 16.77 31.78 14 34 Z" fill="#f5eddc"/>
+          <path d="M14 34 16.77 29.32 19.54 26.5 22.31 24.58 25.08 23.27 27.85 22.45 30.62 22.05 33.38 22.05 36.15 22.45 38.92 23.27 41.69 24.58 44.46 26.5 47.23 29.32 50 34" fill="none" stroke="#c79a5b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14 34 16.77 30.45 19.54 28.05 22.31 26.35 25.08 25.16 27.85 24.41 30.62 24.05 33.38 24.05 36.15 24.41 38.92 25.16 41.69 26.35 44.46 28.05 47.23 30.45 50 34" fill="none" stroke="#c79a5b" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="53" y="9" width="5" height="5" rx="2.5" fill="#f5c84b" opacity="0.9"/>
         </svg>
       </span>
       <span><strong>Le Petit Atelier</strong><small>français, mais amusant</small></span>
     </a>
-    <button class="mobile-library-button" id="mobile-library-button" type="button" aria-expanded="false" aria-controls="library-panel">☰ Library</button>
+    <button class="mobile-library-button" id="mobile-library-button" type="button" aria-expanded="false" aria-controls="library-panel">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-menu"/></svg><span>Library</span>
+    </button>
     <nav class="top-actions" aria-label="Page links">
-      <button class="nav-button" id="wordlist-button" type="button" aria-label="My word list">🗒️ <span>Word list</span></button>
-      <button class="nav-button" id="review-button" type="button" aria-label="Review due words">🎯 <span>Review</span></button>
-      <button class="dashboard-button" id="dashboard-button" type="button">▦ <span>My progress</span></button>
+      <button class="nav-button" id="wordlist-button" type="button" aria-label="My word list" title="My word list">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-words"/></svg><span>Word list</span>
+      </button>
+      <button class="nav-button" id="review-button" type="button" aria-label="Review due words" title="Review">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-review"/></svg><span>Review</span>
+      </button>
+      <button class="dashboard-button" id="dashboard-button" type="button" aria-label="My progress" title="My progress">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-progress"/></svg><span>My progress</span>
+      </button>
       <button class="icon-button" id="theme-button" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">☾</button>
     </nav>
   </header>
@@ -87,6 +125,7 @@
         <button class="button blue" id="retry-button" type="button">Try again</button>
       </div>
 
+      <section id="home-view" hidden aria-label="Home"></section>
       <section id="wordlist-view" hidden aria-label="My word list"></section>
       <section id="review-view" hidden aria-label="Review"></section>
       <section id="dashboard-view" hidden aria-label="Learning dashboard"></section>
@@ -127,17 +166,17 @@
   <button class="install-button" id="install-button" type="button" hidden>📲 Install app</button>
 
   <nav class="ios-tabbar" id="ios-tabbar" aria-label="Primary navigation" hidden>
-    <button type="button" data-ios-tab="lessons" class="ios-tab active" aria-label="Lessons">
-      <span class="ios-tab-icon">📚</span><span class="ios-tab-label">Lessons</span>
+    <button type="button" data-ios-tab="home" class="ios-tab active" aria-label="Home">
+      <span class="ios-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-french"/></svg></span><span class="ios-tab-label">Accueil</span>
     </button>
     <button type="button" data-ios-tab="wordlist" class="ios-tab" aria-label="Word list">
-      <span class="ios-tab-icon">🗒️</span><span class="ios-tab-label">Words</span>
+      <span class="ios-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-words"/></svg></span><span class="ios-tab-label">Mots</span>
     </button>
     <button type="button" data-ios-tab="review" class="ios-tab" aria-label="Review">
-      <span class="ios-tab-icon">🎯</span><span class="ios-tab-label">Review</span>
+      <span class="ios-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-review"/></svg></span><span class="ios-tab-label">Révision</span>
     </button>
     <button type="button" data-ios-tab="dashboard" class="ios-tab" aria-label="Progress">
-      <span class="ios-tab-icon">▦</span><span class="ios-tab-label">Progress</span>
+      <span class="ios-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-progress"/></svg></span><span class="ios-tab-label">Progrès</span>
     </button>
   </nav>
 
