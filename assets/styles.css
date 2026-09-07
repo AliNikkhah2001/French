@@ -506,6 +506,15 @@ html.is-standalone .mobile-library-button { display: none !important; }
 html.is-standalone .lesson-tabs { top: calc(48px + env(safe-area-inset-top)); }
 html.is-standalone .home-library .search-box { top: calc(48px + env(safe-area-inset-top)); }
 
+.home-shortcuts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.home-shortcut { display: flex; align-items: center; gap: 11px; border: 1px solid var(--hairline); border-radius: 14px; padding: 12px 14px; background: var(--paper); color: var(--ink); text-decoration: none; box-shadow: var(--soft-shadow); transition: border-color .18s ease, box-shadow .18s ease; }
+.home-shortcut:hover { border-color: var(--blue-2); box-shadow: var(--shadow); text-decoration: none; }
+.home-shortcut > span { font-size: 1.4rem; }
+.home-shortcut b, .home-shortcut small { display: block; }
+.home-shortcut b { font-size: .92rem; }
+.home-shortcut small { color: var(--muted); font-size: .68rem; margin-top: 2px; }
+.home-continue-block { margin-top: 4px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }

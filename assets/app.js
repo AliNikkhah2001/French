@@ -1,5 +1,6 @@
 import { escapeHtml, inlineMarkdown, parseLesson } from './content-parser.js';
 import { dateFromKey, localDateKey, normalizeFrench } from './analytics-utils.js';
+import * as pdfjsLib from './vendor/pdfjs/pdf.mjs';
 
 const ACTIVITY_KEY = 'atelier-activity-v1';
 const FREQUENCY_KEY = 'atelier-frequency-known-v1';
@@ -322,6 +323,7 @@ function renderHome() {
   const greeting = hour >= 6 && hour < 18 ? 'Bonjour' : 'Bonsoir';
   const dateLabel = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   const lastItem = lastLesson();
+  const continueBlock = renderContinueReading();
   $('home-view').innerHTML = `
     <section class="home-hero">
       <div class="home-hero-inner">
@@ -347,6 +349,13 @@ function renderHome() {
       <div class="home-stat"><span>✨ Today</span><b>${today}</b><small>learning actions</small></div>
     </div>
     ${lastItem ? `<button class="home-continue" id="home-continue" type="button"><span class="hc-art">${escapeHtml(lastItem.emoji)}</span><span><small>Continue learning</small><b>${escapeHtml(lastItem.title)}</b></span><span class="hc-cta">›</span></button>` : ''}
+    <div class="home-shortcuts">
+      <a class="home-shortcut" href="#view=practice"><span>🎲</span><div><b>Practice</b><small>games, XP &amp; streak</small></div></a>
+      <a class="home-shortcut" href="#view=library"><span>📚</span><div><b>Books</b><small>PDF &amp; EPUB reader</small></div></a>
+      <a class="home-shortcut" href="#view=dashboard"><span>🎓</span><div><b>Exams</b><small>your progress &amp; scores</small></div></a>
+      <a class="home-shortcut" href="#view=review"><span>🔁</span><div><b>Review</b><small>spaced repetition</small></div></a>
+    </div>
+    ${continueBlock}
     <section class="home-library">
       <h3>La bibliothèque</h3>
       <p>Pick today’s adventure — search and filter the lessons, then tap to open.</p>
@@ -356,6 +365,9 @@ function renderHome() {
       <div class="lesson-list" id="home-list" aria-live="polite"></div>
     </section>`;
   $('home-search')?.addEventListener('input', event => { state.search = event.target.value; renderHomeLibrary(); });
+  $('home-view').querySelectorAll('[data-continue-doc]').forEach(button => button.addEventListener('click', () => {
+    location.hash = `view=reader&file=${encodeURIComponent(button.dataset.continueDoc)}&type=${button.dataset.docKind}`;
+  }));
   const continueButton = $('home-continue');
   if (continueButton) continueButton.addEventListener('click', async () => { if (lastItem) await loadLesson(lastItem); });
   renderHomeFilters();
@@ -448,6 +460,7 @@ function renderLibraryView() {
       </div>
       <div class="wordlist-stats"><div class="wordlist-stat"><small>Collections</small><b>${collections.length}</b></div><div class="wordlist-stat"><small>Lessons</small><b>${state.manifest.lessons.length}</b></div><div class="wordlist-stat"><small>Readings & PDFs</small><b>${totalDocs}</b></div></div>
     </header>
+    ${renderContinueReading()}
     <div class="library-list">${html}</div>`;
   $('library-view').querySelectorAll('[data-open-lesson]').forEach(button => button.addEventListener('click', async () => {
     const item = state.manifest.lessons.find(lesson => lesson.slug === button.dataset.openLesson);
@@ -471,19 +484,55 @@ function libraryDocCard(doc) {
 }
 
 function libraryBind() {
-  $('library-view').querySelectorAll('[data-open-doc]').forEach(button => button.addEventListener('click', () => {
-    location.hash = `view=reader&file=${encodeURIComponent(button.dataset.openDoc)}&type=${button.dataset.docKind}`;
+  $('library-view').querySelectorAll('[data-open-doc], [data-continue-doc]').forEach(button => {
+    button.addEventListener('click', () => {
+      const path = button.dataset.openDoc || button.dataset.continueDoc;
+      const kind = button.dataset.docKind;
+      if (path) location.hash = `view=reader&file=${encodeURIComponent(path)}&type=${kind}`;
+    });
+  });
+}
+
+function allLibraryDocs() {
+  const docs = [];
+  (state.library?.collections || []).forEach(collection => collection.items.forEach(item => {
+    if (item.kind === 'pdf' || item.kind === 'epub') docs.push(item);
   }));
+  return docs;
+}
+
+function docMemory(kind, path) {
+  const key = kind === 'pdf' ? `atelier-pdf:${path}` : `atelier-epub:${path}`;
+  try {
+    const memory = JSON.parse(localStorage.getItem(key) || 'null');
+    return memory && (memory.lastRead || (kind === 'pdf' ? memory.page > 0 : memory.section > 0) || memory.note) ? memory : null;
+  } catch { return null; }
+}
+
+function continueReadingDocs() {
+  const opened = [];
+  allLibraryDocs().forEach(doc => {
+    const memory = docMemory(doc.kind, doc.path);
+    if (memory) opened.push({ ...doc, memory, lastRead: memory.lastRead || 0 });
+  });
+  return opened.sort((a, b) => b.lastRead - a.lastRead).slice(0, 5);
+}
+
+function renderContinueReading() {
+  const docs = continueReadingDocs();
+  if (!docs.length) return '';
+  const cards = docs.map(doc => {
+    const badge = doc.kind === 'pdf' ? '<span class="doc-badge pdf">PDF</span>' : '<span class="doc-badge epub">EPUB</span>';
+    const position = doc.kind === 'pdf' ? `Page ${doc.memory.page || 1}` : `Section ${(doc.memory.section || 0) + 1}`;
+    return `<button class="library-item" type="button" data-continue-doc="${escapeHtml(doc.path)}" data-doc-kind="${doc.kind}"><span class="library-item-emoji">${doc.kind === 'pdf' ? '📕' : '📘'}</span><span><b>${escapeHtml(doc.title)}</b><small>${badge}<span>${escapeHtml(position)} · bookmark &amp; notes</span></small></span><span class="lesson-arrow">›</span></button>`;
+  }).join('');
+  return `<section class="home-library home-continue-block"><h3>📖 Continue reading — <span class="kicker">open books</span></h3><p>Resume exactly where you left off.</p><div class="library-docs">${cards}</div></section>`;
 }
 
 /* ------------------- PDF reader ------------------- */
 
 const pdfMemoryPrefix = 'atelier-pdf:';
-let pdfWorkerReady = false;
-if (window.pdfjsLib) {
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('vendor/pdfjs/pdf.worker.min.js', import.meta.url).href;
-  pdfWorkerReady = true;
-}
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('vendor/pdfjs/pdf.worker.mjs', import.meta.url).href;
 state.pdfDoc = null;
 state.pdfPage = 1;
 state.pdfZoom = 1;
@@ -552,7 +601,6 @@ function showReader(file, kind) {
     else if (action === 'zoomin') setZoom(state.pdfZoom * 1.18);
     else if (action === 'zoomout') setZoom(state.pdfZoom / 1.18);
   }));
-  if (!pdfWorkerReady) { $('reader-body').innerHTML = '<div class="reader-loading">PDF reader library is unavailable.</div>'; return; }
   loadPdfDocument();
 }
 
@@ -561,7 +609,7 @@ async function loadPdfDocument() {
     const response = await fetch(documentUrl(state.pdfFile));
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.arrayBuffer();
-    const loadingTask = window.pdfjsLib.getDocument({ data });
+    const loadingTask = pdfjsLib.getDocument({ data });
     state.pdfDoc = await loadingTask.promise;
     $('reader-count').textContent = `/ ${state.pdfDoc.numPages}`;
     state.pdfPage = Math.min(state.pdfDoc.numPages, state.pdfMemory.page || 1);
@@ -608,6 +656,7 @@ async function goToPage(page) {
   $('reader-count').textContent = `/ ${state.pdfDoc.numPages}`;
   $('reader-progress').style.width = `${percent(target, state.pdfDoc.numPages)}%`;
   updateBookmarkButton();
+  state.pdfMemory.lastRead = Date.now();
   savePdfMemory(state.pdfFile);
 }
 
@@ -835,6 +884,7 @@ function epubGoTo(index, jumpToId) {
   restoreEpubHighlights();
   state.epubIndex = index;
   state.epubMemory.section = index;
+  state.epubMemory.lastRead = Date.now();
   saveEpubMemory(state.epubFile);
   $('reader-page').value = index + 1;
   $('reader-count').textContent = `/ ${state.epubSections.length}`;
