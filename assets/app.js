@@ -481,7 +481,7 @@ function libraryBind() {
 const pdfMemoryPrefix = 'atelier-pdf:';
 let pdfWorkerReady = false;
 if (window.pdfjsLib) {
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('../vendor/pdfjs/pdf.worker.min.js', import.meta.url).href;
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('vendor/pdfjs/pdf.worker.min.js', import.meta.url).href;
   pdfWorkerReady = true;
 }
 state.pdfDoc = null;
