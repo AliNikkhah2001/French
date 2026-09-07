@@ -200,17 +200,18 @@ function summaryMarkdown(analytics) {
 }
 
 function cleanTitle(name) {
-  const base = basename(name.replace(/\.(pdf|epub|PDF|EPUB)$/i, ''));
-  return base
-    .replace(/^\(\d+\)\s*/, '')
+  let base = basename(name.replace(/\.(pdf|epub|PDF|EPUB)$/i, ''));
+  base = base
+    .replace(/^\d+\s*[-–—.]\s*/, '')
+    .replace(/\s*-\s*Albert Camus\s*$/i, '')
     .replace(/\s*\(\d+\)\s*$/, '')
-    .replace(/^\d+\s*[-–—]\s*/, '')
-    .replace(/\s*[-–—]\s*iranfrench\.ir\s*$/i, '')
+    .replace(/\s*[-–—]\s*www\.iranfrench\.ir\s*$/i, '')
     .replace(/\s*www\.iranfrench\.ir\s*$/i, '')
-    .replace(/\+?\(?\+?corrigés?\)?$/i, '')
-    .replace(/\+corrigés?$/i, '')
+    .replace(/\s*[-–—]\s*iranfrench\.ir\s*$/i, '')
+    .replace(/\+?\s*\(\+?\s*corrigés?\s*\)?$/i, '')
     .replace(/\+Corrigés?$/i, '')
-    .trim() || name;
+    .trim();
+  return base || name;
 }
 
 function classifyDocument(relPath) {
@@ -222,6 +223,14 @@ function classifyDocument(relPath) {
   if (lower.includes('albert camus')) return { kind, category: 'books', section: 'Littérature — Albert Camus' };
   return { kind, category: 'books', section: 'Livres' };
 }
+
+const authorOf = doc => {
+  const lower = doc.path.toLowerCase();
+  if (lower.includes('tintin')) return 'Hergé';
+  if (lower.includes('albert camus')) return 'Albert Camus';
+  if (lower.includes('grammaire')) return '';
+  return '';
+};
 
 function lessonCollection(item) {
   if (item.type === 'podcast') return 'podcasts';
@@ -245,7 +254,7 @@ async function buildLibrary(records) {
     documents = all.map(file => {
       const rel = publicPath(file);
       const info = classifyDocument(rel);
-      return { kind: info.kind, title: cleanTitle(file), category: info.category, section: info.section, path: rel };
+      return { kind: info.kind, title: cleanTitle(file), author: authorOf({ path: rel }), category: info.category, section: info.section, path: rel };
     }).sort((a, b) => a.title.localeCompare(b.title, 'fr'));
   }
   for (const record of records) {
@@ -258,7 +267,7 @@ async function buildLibrary(records) {
   }
   for (const doc of documents) {
     const target = byId.get(doc.category);
-    target.items.push({ kind: doc.kind, title: doc.title, section: doc.section, path: doc.path });
+    target.items.push({ kind: doc.kind, title: doc.title, author: doc.author, section: doc.section, path: doc.path });
   }
   for (const collection of collections) collection.items.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
   return { version: 1, generatedAt: new Date().toISOString(), collections };

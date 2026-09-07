@@ -18,19 +18,19 @@ const MIME = {
 };
 
 function lookup(root, pathname) {
-  const decoded = decodeURIComponent(pathname);
   const base = resolve(root);
-  const target = normalize(join(base, decoded));
+  const target = normalize(join(base, pathname));
   if (!target.startsWith(base)) return null;
   return target;
 }
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
-  let pathname = url.pathname;
+  let pathname = decodeURIComponent(url.pathname);
   if (pathname.startsWith('/French/')) pathname = pathname.slice('/French/'.length) || '/';
   const kind = pathname.startsWith('/added content/') ? addedRoot : distRoot;
-  const file = lookup(kind, pathname);
+  const relay = pathname.startsWith('/added content/') ? pathname.slice('added content/'.length) : pathname;
+  const file = lookup(kind, relay);
   if (!file) { response.writeHead(403); response.end('Forbidden'); return; }
   try {
     const info = await stat(file);

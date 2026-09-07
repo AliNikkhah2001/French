@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atelier-francais-v5';
+const CACHE_NAME = 'atelier-francais-v6';
 const PRECACHE_URLS = [
   './',
   'index.html',
@@ -16,6 +16,7 @@ const PRECACHE_URLS = [
   'assets/favicon-48.png',
   'assets/vendor/pdfjs/pdf.min.js',
   'assets/vendor/pdfjs/pdf.worker.min.js',
+  'assets/vendor/jszip.min.js',
   'content/index.json',
   'content/library.json'
 ];

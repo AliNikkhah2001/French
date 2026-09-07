@@ -169,7 +169,7 @@ async function loadManifest() {
     else if (route.view === 'wordlist') showWordList();
     else if (route.view === 'review') showReview();
     else if (route.view === 'library') showLibrary();
-    else if (route.view === 'reader' && route.file) showReader(route.file);
+    else if (route.view === 'reader' && route.file) showReader(route.file, route.type);
     else if (route.view === 'practice') showPractice();
     else if (route.view === 'home') showHome();
     else {
@@ -464,16 +464,15 @@ function libraryLessonCard(item) {
 
 function libraryDocCard(doc) {
   const badge = doc.kind === 'pdf' ? '<span class="doc-badge pdf">PDF</span>' : '<span class="doc-badge epub">EPUB</span>';
-  const url = documentUrl(doc.path);
   if (doc.kind === 'pdf') {
-    return `<button class="library-item" type="button" data-open-pdf="${escapeHtml(doc.path)}"><span class="library-item-emoji">📕</span><span><b>${escapeHtml(doc.title)}</b><small>${badge}<span>Read, bookmark &amp; take notes</span></small></span><span class="lesson-arrow">›</span></button>`;
+    return `<button class="library-item" type="button" data-open-doc="${escapeHtml(doc.path)}" data-doc-kind="pdf"><span class="library-item-emoji">📕</span><span><b>${escapeHtml(doc.title)}</b><small>${badge}<span>Read, bookmark &amp; take notes</span></small></span><span class="lesson-arrow">›</span></button>`;
   }
-  return `<a class="library-item" href="${url}" target="_blank" rel="noopener" download><span class="library-item-emoji">📘</span><span><b>${escapeHtml(doc.title)}</b><small>${badge}<span>Download to read</span></small></span><span class="lesson-arrow">↧</span></a>`;
+  return `<button class="library-item" type="button" data-open-doc="${escapeHtml(doc.path)}" data-doc-kind="epub"><span class="library-item-emoji">📘</span><span><b>${escapeHtml(doc.title)}</b><small>${badge}<span>Read in-app, highlight &amp; look up words</span></small></span><span class="lesson-arrow">›</span></button>`;
 }
 
 function libraryBind() {
-  $('library-view').querySelectorAll('[data-open-pdf]').forEach(button => button.addEventListener('click', () => {
-    location.hash = `view=reader&file=${encodeURIComponent(button.dataset.openPdf)}`;
+  $('library-view').querySelectorAll('[data-open-doc]').forEach(button => button.addEventListener('click', () => {
+    location.hash = `view=reader&file=${encodeURIComponent(button.dataset.openDoc)}&type=${button.dataset.docKind}`;
   }));
 }
 
@@ -503,7 +502,7 @@ function savePdfMemory(file) {
   localStorage.setItem(pdfMemoryKey(file), JSON.stringify(state.pdfMemory));
 }
 
-function showReader(file) {
+function showReader(file, kind) {
   hideAllMainViews();
   $('reader-view').hidden = false;
   document.documentElement.classList.remove('view-home');
@@ -511,6 +510,7 @@ function showReader(file) {
   closeMobileLibrary();
   state.view = 'reader';
   state.pdfFile = file || '';
+  if (kind === 'epub') { showEpubReader(state.pdfFile); return; }
   state.pdfDoc = null;
   state.pdfPage = 1;
   loadPdfMemory(state.pdfFile);
@@ -558,7 +558,10 @@ function showReader(file) {
 
 async function loadPdfDocument() {
   try {
-    const loadingTask = window.pdfjsLib.getDocument({ url: documentUrl(state.pdfFile) });
+    const response = await fetch(documentUrl(state.pdfFile));
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.arrayBuffer();
+    const loadingTask = window.pdfjsLib.getDocument({ data });
     state.pdfDoc = await loadingTask.promise;
     $('reader-count').textContent = `/ ${state.pdfDoc.numPages}`;
     state.pdfPage = Math.min(state.pdfDoc.numPages, state.pdfMemory.page || 1);
@@ -594,7 +597,12 @@ async function goToPage(page) {
   $('reader-body').replaceChildren(canvas);
   const renderTask = pageObj.render({ canvasContext: canvas.getContext('2d'), viewport });
   state._renderTask = renderTask;
-  try { await renderTask.promise; } catch { /* cancelled */ }
+  try { await renderTask.promise; } catch (error) {
+    if (!error || error.name !== 'RenderingCancelledException') {
+      $('reader-body').innerHTML = `<div class="reader-loading">Could not draw this page.<br><small>${escapeHtml(error?.message || '')}</small></div>`;
+      return;
+    }
+  }
   state.pdfPage = target;
   $('reader-page').value = target;
   $('reader-count').textContent = `/ ${state.pdfDoc.numPages}`;
@@ -629,10 +637,331 @@ function toggleBookmark() {
   recordActivity('reading');
 }
 
-/* ------------------- Practice (grammar & vocabulary) ------------------- */
+/* ------------------- EPUB reader ------------------- */
 
+const epubMemoryPrefix = 'atelier-epub:';
+state.epub = null;
+state.epubIndex = 0;
+state.epubSections = [];
+state.epubMemory = { section: 0, highlights: [], note: '' };
+
+function epubMemoryKey(file) { return `${epubMemoryPrefix}${file}`; }
+
+function loadEpubMemory(file) {
+  try { state.epubMemory = { section: 0, highlights: [], note: '', ...(JSON.parse(localStorage.getItem(epubMemoryKey(file))) || {}) }; }
+  catch { state.epubMemory = { section: 0, highlights: [], note: '' }; }
+}
+
+function saveEpubMemory(file) {
+  localStorage.setItem(epubMemoryKey(file), JSON.stringify(state.epubMemory));
+}
+
+function epubTitleFromPath(file) {
+  let base = decodeURIComponent(file).split('/').pop() || '';
+  base = base.replace(/\.epub$/i, '');
+  return base.replace(/\s*-\s*Albert Camus$/i, '');
+}
+
+function showEpubReader(file) {
+  state.epubFile = file;
+  state.epub = null;
+  state.epubIndex = 0;
+  state.epubSections = [];
+  loadEpubMemory(file);
+  const title = epubTitleFromPath(file);
+  $('reader-view').innerHTML = `
+    <div class="reader-shell">
+      <header class="reader-bar">
+        <button class="reader-back" id="reader-back" type="button">← Bibliothèque</button>
+        <strong class="reader-title" id="reader-title">${escapeHtml(title)}</strong>
+        <div class="reader-controls">
+          <button class="reader-btn" data-epub="prev" type="button" aria-label="Previous section">‹</button>
+          <input id="reader-page" type="number" min="1" value="1" aria-label="Section">
+          <span class="reader-count" id="reader-count"></span>
+          <button class="reader-btn" data-epub="next" type="button" aria-label="Next section">›</button>
+          <button class="reader-btn bookmark" id="reader-bookmark" type="button">☆</button>
+          <button class="reader-btn" data-epub="font-plus" type="button" title="Increase text size">A+</button>
+          <button class="reader-btn" data-epub="font-minus" type="button" title="Decrease text size">A−</button>
+        </div>
+      </header>
+      <div class="reader-body epub-body" id="reader-body"><div class="reader-loading">Opening the book… 🥐</div></div>
+      <footer class="reader-footer">
+        <div class="reader-progress"><i id="reader-progress" style="width:0%"></i></div>
+        <textarea id="reader-note" placeholder="Vos notes sur cette lecture… (saved on this device)"></textarea>
+        <div class="epub-tools"><span>Tap a word for the dictionary · select a passage to highlight.</span></div>
+      </footer>
+    </div>`;
+  document.title = `${title} · Le Petit Atelier Français`;
+  $('reader-back').addEventListener('click', () => { location.hash = '#view=library'; });
+  $('reader-note').value = state.epubMemory.note || '';
+  $('reader-note').addEventListener('input', event => { state.epubMemory.note = event.target.value; saveEpubMemory(state.epubFile); });
+  $('reader-view').querySelectorAll('[data-epub]').forEach(button => button.addEventListener('click', () => {
+    const action = button.dataset.epub;
+    if (action === 'prev') epubNavigate(-1);
+    else if (action === 'next') epubNavigate(1);
+    else if (action === 'font-plus') epubFont(1);
+    else if (action === 'font-minus') epubFont(-1);
+  }));
+  $('reader-bookmark').addEventListener('click', epubToggleBookmark);
+  loadEpubDocument();
+}
+
+async function loadEpubDocument() {
+  if (!window.JSZip) { $('reader-body').innerHTML = '<div class="reader-loading">The EPUB reader is unavailable.</div>'; return; }
+  try {
+    const response = await fetch(documentUrl(state.epubFile));
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const buffer = await response.arrayBuffer();
+    const zip = await JSZip.loadAsync(buffer);
+    state.epubSections = await extractEpubSpine(zip);
+    if (!state.epubSections.length) throw new Error('No content found in this EPUB.');
+    state.epubIndex = Math.max(0, Math.min(state.epubSections.length - 1, state.epubMemory.section || 0));
+    $('reader-count').textContent = `/ ${state.epubSections.length}`;
+    $('reader-page').max = state.epubSections.length;
+    $('reader-page').addEventListener('change', event => {
+      const target = Math.max(1, Math.min(state.epubSections.length, Number(event.target.value) || 1));
+      epubGoTo(target - 1);
+    });
+    $('reader-body').addEventListener('click', event => {
+      const wordEl = event.target.closest('.epub-word');
+      if (wordEl) { openDictionary(wordEl, wordEl.dataset.word); return; }
+      const section = event.target.closest('.epub-section');
+      if (section) epubHighlightSelection(event);
+    });
+    await epubGoTo(state.epubIndex);
+  } catch (error) {
+    console.error(error);
+    $('reader-body').innerHTML = `<div class="reader-loading">Could not open this EPUB.<br><small>${escapeHtml(error.message || '')}</small></div>`;
+  }
+}
+
+async function extractEpubSpine(zip) {
+  const containerFile = zip.file('META-INF/container.xml');
+  if (!containerFile) throw new Error('Not a valid EPUB (missing container.xml).');
+  let containerXml = await containerFile.async('text');
+  const rootfileMatch = containerXml.match(/full-path\s*=\s*["']([^"']+)["']/i)
+    || containerXml.match(/<rootfile[^>]*full-path\s*:\s*([^>\s]+)/i);
+  if (!rootfileMatch) throw new Error('Cannot locate the EPUB package file.');
+  const opfPath = rootfileMatch[1].replace(/^\//, '');
+  const opf = zip.file(opfPath);
+  if (!opf) throw new Error('Cannot find the EPUB package.');
+  const opfText = await opf.async('text');
+  const baseDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/') + 1) : '';
+  const idHref = [];
+  const manifestAttrs = opfText.match(/<item\b[^>]*\b(id\s*=\s*["'][^"']*["'])[^>]*\bhref\s*=\s*["']([^"']+)["']/gi);
+  (manifestAttrs || []).forEach(match => idHref.push([match]));
+  const spineIds = [];
+  const spineMatch = opfText.match(/<spine[^>]*>([\s\S]*?)<\/spine>/i);
+  if (spineMatch) {
+    const idrefs = spineMatch[1].match(/idref\s*=\s*["']([^"']+)["']/gi) || [];
+    idrefs.forEach(ref => { const m = ref.match(/idref\s*=\s*["']([^"']+)["']/i); if (m) spineIds.push(m[1]); });
+  }
+  const hrefById = {};
+  const itemRe = /<item\b[^>]*\bid\s*=\s*["']([^"']+)["'][^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>/gi;
+  let itemMatch;
+  while ((itemMatch = itemRe.exec(opfText))) hrefById[itemMatch[1]] = itemMatch[2];
+  const sections = [];
+  for (const id of spineIds) {
+    const href = hrefById[id];
+    if (!href) continue;
+    const full = normalizeEpubHref(baseDir + href);
+    const decoded = decodeURIComponent(full.split('#')[0]);
+    const file = zip.file(decoded);
+    if (!file) continue;
+    const text = await file.async('text');
+    sections.push({ href: full, text });
+  }
+  return sections;
+}
+
+function normalizeEpubHref(href) {
+  const parts = href.split('/');
+  const stack = [];
+  for (const part of parts) {
+    if (part === '..') stack.pop();
+    else if (part === '.' || part === '') continue;
+    else stack.push(part);
+  }
+  return stack.join('/');
+}
+
+function htmlToPlain(html) {
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  el.querySelectorAll('script, style, head, title, meta').forEach(node => node.remove());
+  return el;
+}
+
+function epubFontDir() {
+  const saved = Number(localStorage.getItem('atelier-epub-font') || 0);
+  return saved;
+}
+
+function epubGoTo(index, jumpToId) {
+  const section = state.epubSections[index];
+  if (!section) return;
+  const body = $('reader-body');
+  const fontPx = 17 + epubFontDir();
+  body.style.fontSize = `${fontPx}px`;
+  const container = document.createElement('div');
+  container.className = 'epub-section';
+  const doc = htmlToPlain(section.text);
+  renderEpubContent(container, doc);
+  body.replaceChildren(container);
+  restoreEpubHighlights();
+  state.epubIndex = index;
+  state.epubMemory.section = index;
+  saveEpubMemory(state.epubFile);
+  $('reader-page').value = index + 1;
+  $('reader-count').textContent = `/ ${state.epubSections.length}`;
+  $('reader-progress').style.width = `${percent(index + 1, state.epubSections.length)}%`;
+  updateEpubBookmarkButton();
+  if (jumpToId) {
+    const target = document.getElementById(jumpToId);
+    if (target) target.scrollIntoView();
+  } else {
+    body.scrollTop = 0;
+  }
+}
+
+function renderEpubContent(container, doc) {
+  const allowed = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'em', 'strong', 'b', 'i', 'ol', 'ul', 'li', 'blockquote', 'br', 'div']);
+  function walk(node) {
+    if (node.nodeType === Node.TEXT_NODE) return;
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = node.tagName.toLowerCase();
+      if (tag === 'img') { node.remove(); return; }
+      if (!allowed.has(tag)) { while (node.firstChild) node.parentNode?.insertBefore(node.firstChild, node); node.remove(); return; }
+    }
+    [...node.childNodes].forEach(walk);
+  }
+  walk(doc);
+  // wrap text words for highlighting/dictionary
+  const tags = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE', 'EM', 'STRONG', 'B', 'I', 'DIV']);
+  doc.querySelectorAll('*').forEach(el => {
+    if (!el.children.length && el.textContent.trim()) {
+      [...el.childNodes].forEach(child => {
+        if (child.nodeType === Node.TEXT_NODE && child.textContent.trim()) {
+          const span = document.createElement('span');
+          span.innerHTML = wordify(child.textContent);
+          child.replaceWith(span);
+        }
+      });
+    }
+  });
+  container.appendChild(doc);
+}
+
+function wordify(text) {
+  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escaped.replace(/([\p{L}\p{M}]+(?:['’-][\p{L}\p{M}]+)*)/gu, '<span class="epub-word" data-word="$1">$1</span>');
+}
+
+function epubNavigate(delta) {
+  const target = state.epubIndex + delta;
+  if (target >= 0 && target < state.epubSections.length) epubGoTo(target);
+}
+
+function epubFont(delta) {
+  let size = epubFontDir() + delta;
+  size = Math.max(-6, Math.min(8, size));
+  localStorage.setItem('atelier-epub-font', String(size));
+  epubGoTo(state.epubIndex);
+}
+
+function updateEpubBookmarkButton() {
+  const btn = $('reader-bookmark');
+  if (!btn) return;
+  const bookmarked = (state.epubMemory.highlights || []).includes(state.epubIndex);
+  btn.textContent = bookmarked ? '★' : '☆';
+  btn.classList.toggle('active', bookmarked);
+}
+
+function epubToggleBookmark() {
+  const highlights = state.epubMemory.highlights || [];
+  const index = highlights.indexOf(state.epubIndex);
+  if (index >= 0) highlights.splice(index, 1);
+  else highlights.push(state.epubIndex);
+  state.epubMemory.highlights = highlights;
+  saveEpubMemory(state.epubFile);
+  updateEpubBookmarkButton();
+  recordActivity('reading');
+}
+
+function epubHighlightSelection(event) {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed) return;
+  const text = selection.toString().trim();
+  if (!text || text.length < 2) return;
+  const range = selection.getRangeAt(0);
+  const container = $('reader-body').querySelector('.epub-section');
+  if (!container || !container.contains(range.commonAncestorContainer)) return;
+  const highlight = document.createElement('mark');
+  highlight.className = 'epub-highlight';
+  try { range.surroundContents(highlight); } catch { return; }
+  selection.removeAllRanges();
+  const highlights = state.epubMemory.highlights || [];
+  highlights.push({ section: state.epubIndex, id: `h-${Date.now()}`, text: text.slice(0, 200) });
+  state.epubMemory.highlights = highlights;
+  saveEpubMemory(state.epubFile);
+  recordActivity('highlight');
+  showToast('Passage highlighted.', 'success');
+}
+
+async function restoreEpubHighlights() {
+  const marks = Array.from(document.querySelectorAll('.epub-highlight'));
+  marks.forEach(mark => { const parent = mark.parentNode; while (mark.firstChild) parent.insertBefore(mark.firstChild, mark); mark.remove(); parent.normalize(); });
+  const highlights = (state.epubMemory.highlights || []).filter(h => h && h.section === state.epubIndex);
+  if (!highlights.length) return;
+  for (const h of highlights) {
+    if (!h.text) continue;
+    const escaped = h.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const walker = document.createTreeWalker($('reader-body').querySelector('.epub-section'), NodeFilter.SHOW_TEXT);
+    let node, found = false;
+    while ((node = walker.nextNode())) {
+      if (found) break;
+      const idx = node.textContent.indexOf(h.text);
+      if (idx >= 0) {
+        const range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + h.text.length);
+        const mark = document.createElement('mark');
+        mark.className = 'epub-highlight';
+        try { range.surroundContents(mark); found = true; } catch { /* partial */ }
+      }
+    }
+  }
+}
+
+/* ------------------- Practice (dedicated section) ------------------- */
+
+const PRACTICE_KEY = 'atelier-practice-v1';
 let practiceQuestions = [];
 let practiceIndex = 0;
+let practiceMode = 'mixed';
+let practiceRound = 0;
+let practiceAnswers = [];
+
+function practiceStats() {
+  try { return JSON.parse(localStorage.getItem(PRACTICE_KEY)) || { xp: 0, streak: 0, best: 0, rounds: 0, answers: 0, correct: 0, last: null, days: {} }; }
+  catch { return { xp: 0, streak: 0, best: 0, rounds: 0, answers: 0, correct: 0, last: null, days: {} }; }
+}
+
+function savePracticeStats(stats) {
+  localStorage.setItem(PRACTICE_KEY, JSON.stringify(stats));
+}
+
+const PRACTICE_MODES = [
+  { id: 'mixed', label: 'Mixed', emoji: '🎲', blurb: 'A bit of everything, auto‑picked.' },
+  { id: 'matching', label: 'Matching', emoji: '🔗', blurb: 'Match French ↔ English pairs.' },
+  { id: 'synonym', label: 'Synonyms', emoji: '🔁', blurb: 'Pick the closest meaning.' },
+  { id: 'fill', label: 'Fill the blank', emoji: '✍️', blurb: 'Complete the sentence in French.' },
+  { id: 'order', label: 'Word order', emoji: '🔀', blurb: 'Rebuild the sentence.' },
+  { id: 'grammar', label: 'Grammar', emoji: '🧩', blurb: 'Choose the correct form.' },
+  { id: 'spoken', label: 'Listen & write', emoji: '🎧', blurb: 'Hear it, then write it.' },
+  { id: 'mc', label: 'Choice', emoji: '☑️', blurb: 'Classic multiple choice.' },
+  { id: 'typing', label: 'Type it', emoji: '⌨️', blurb: 'Type the translation.' }
+];
 
 function practicePool() {
   const words = getWordList();
@@ -643,21 +972,103 @@ function practicePool() {
   return shuffle(fromAnalytics.map(entity => ({ french: entity.french, english: entity.english, type: entity.type }))).slice(0, 40);
 }
 
-function makePracticeQuestions() {
+function practiceLines() {
+  if (state.lesson?.transcript?.length) {
+    return state.lesson.transcript
+      .map(line => (line.french || '').replace(/<[^>]+>/g, '').trim().replace(/[«»“”]/g, ''))
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function grammarQuestions() {
+  const entities = state.analytics?.entities?.grammar || [];
+  return entities.map(item => ({
+    title: item.title,
+    lesson: item.lesson,
+    answer: item.title,
+    example: item.lesson
+  }));
+}
+
+function synonymsFor(word, pool) {
+  // If word has 2+ french tokens, treat each as a potential synonym-free check.
+  // We approximate "synonym" practice: pick the french word whose english translation is closest.
+  return shuffle(pool.filter(other => normalizeFrench(other.french) !== normalizeFrench(word.french))).slice(0, 3);
+}
+
+function distractorEnglish(word, pool) {
+  return shuffle(pool.filter(other => normalizeFrench(other.french) !== normalizeFrench(word.french) && normalize(other.english) !== normalize(word.english))).slice(0, 3);
+}
+
+function buildPracticeQuestions(mode) {
   const pool = practicePool();
   if (!pool.length) return [];
+  const lines = practiceLines();
   const questions = [];
-  const correct = shuffle(pool.slice()).slice(0, 8);
-  correct.forEach(word => {
-    const distractors = shuffle(pool.filter(other => normalizeFrench(other.french) !== normalizeFrench(word.french) && normalize(other.english) !== normalize(word.english))).slice(0, 3);
-    const options = shuffle([{ text: word.english, correct: true }, ...distractors.map(d => ({ text: d.english, correct: false }))]).slice(0, 4);
-    questions.push({ type: 'mc', question: `What does “${escapeHtml(word.french)}” mean?`, options, answer: word.english });
-    questions.push({ type: 'typing', question: `Type the French for “${escapeHtml(word.english)}”:`, answer: word.french, hint: word.type });
+  const used = new Set();
+
+  const addMc = (word) => {
+    const options = distractorEnglish(word, pool);
+    questions.push({ type: 'mc', mode: 'mc', question: `What does “${escapeHtml(word.french)}” mean?`, options: shuffle([{ text: word.english, correct: true }, ...options.map(d => ({ text: d.english, correct: false }))]), answer: word.english, points: 10 });
+  };
+
+  const addTypingF = (word) => {
+    questions.push({ type: 'typing', mode: 'typing', question: `Type the French for “${escapeHtml(word.english)}”:`, answer: word.french, hint: word.type, points: 12 });
+  };
+
+  const addSynonym = (word) => {
+    const alternatives = [...distractorEnglish(word, pool).map(d => d.english)];
+    const choices = shuffle([...alternatives, word.english]);
+    questions.push({ type: 'mc', mode: 'synonym', question: `Which word is a close match for “${escapeHtml(word.french)}”?`, options: choices.map(text => ({ text, correct: normalize(text) === normalize(word.english) })), answer: word.english, points: 12 });
+  };
+
+  const addFill = (word) => {
+    const sentence = lines.find(l => l.includes(word.french)) || lines[0];
+    if (!sentence) return;
+    const blanked = sentence.replace(word.french, '______');
+    questions.push({ type: 'fill', mode: 'fill', question: `Complete: “${escapeHtml(blanked)}”`, answer: word.french, hint: word.english, points: 15 });
+  };
+
+  const addOrder = () => {
+    const line = shuffle(lines).find(l => l.split(/\s+/).length >= 4 && l.split(/\s+/).length <= 8);
+    if (!line) return;
+    questions.push({ type: 'order', mode: 'order', question: 'Arrange these words into a French sentence:', answer: line.split(/\s+/).slice(0, 8).join(' '), points: 15 });
+  };
+
+  const addGrammar = () => {
+    const grammar = grammarQuestions();
+    if (!grammar.length) return;
+    const item = shuffle(grammar)[0];
+    questions.push({ type: 'grammar', mode: 'grammar', question: `Grammar: what is the concept from “${escapeHtml(item.lesson)}”?`, answer: item.title, hint: item.lesson, points: 15 });
+  };
+
+  const addSpoken = (word) => {
+    questions.push({ type: 'spoken', mode: 'spoken', question: 'Listen, then write what you hear:', audio: word.french, answer: word.french, hint: word.english, points: 20 });
+  };
+
+  const addMatchingBatch = (words, pairs = 4) => {
+    const batch = shuffle(words.slice()).slice(0, pairs);
+    if (batch.length < 2) return;
+    questions.push({ type: 'matching', mode: 'matching', prompt: 'Match each French word to its English meaning.', pairs: batch.map(w => ({ fr: w.french, en: w.english })), points: 30 });
+  };
+
+  const modes = mode === 'mixed' ? PRACTICE_MODES.filter(m => m.id !== 'mixed').map(m => m.id) : [mode];
+
+  const sample = shuffle(pool).slice(0, 10);
+  sample.forEach(word => {
+    const m = shuffle(modes)[0];
+    if (m === 'mc') addMc(word);
+    else if (m === 'typing') addTypingF(word);
+    else if (m === 'synonym') addSynonym(word);
+    else if (m === 'fill') addFill(word);
+    else if (m === 'spoken') addSpoken(word);
+    else if (m === 'grammar') addGrammar();
   });
-  const lines = (state.lesson?.transcript || []).map(line => (line.french || '').replace(/<[^>]+>/g, '').trim().replace(/[«»“”]/g, ''))
-    .filter(line => { const words = line.split(/\s+/); return words.length >= 4 && words.length <= 8; });
-  if (lines.length) questions.push({ type: 'order', question: 'Arrange these words into a French sentence:', answer: shuffle(lines)[0].split(/\s+/).slice(0, 8).join(' ') });
-  return shuffle(questions.filter(q => q.answer)).slice(0, 10);
+
+  if (modes.includes('order')) addOrder();
+  if (modes.includes('matching')) addMatchingBatch(sample);
+  return shuffle(questions.filter(q => q.answer || q.pairs)).slice(0, 12);
 }
 
 function showPractice() {
@@ -665,6 +1076,7 @@ function showPractice() {
   $('practice-view').hidden = false;
   document.documentElement.classList.remove('view-home');
   clearNavActive();
+  $('practice-button')?.classList.add('active');
   closeMobileLibrary();
   state.view = 'practice';
   document.title = 'Practice · Le Petit Atelier Français';
@@ -672,90 +1084,252 @@ function showPractice() {
 }
 
 function renderPractice() {
-  const poolSize = practicePool().length;
-  $('practice-view').innerHTML = `
-    <header class="dashboard-hero">
-      <div><span class="kicker">Entraînement</span><h2>Practice what you know.</h2>
-      <p>Auto-generated from <b>${poolSize}</b> words in your list and the transcript — multiple choice, typing and word order, every round.</p></div>
-      <div class="dashboard-actions"><button class="button blue" id="practice-start" type="button">▶ New round</button></div>
-    </header>
-    <div class="practice-stage" id="practice-stage"></div>`;
-  $('practice-start').addEventListener('click', startPractice);
+  const stats = practiceStats();
+  const today = localDateKey();
+  const streak = practiceToday(stats);
+  renderPracticeHero(stats, streak);
 }
 
-async function startPractice() {
+function practiceToday(stats) {
+  return stats.days?.[localDateKey()]?.rounds || 0;
+}
+
+function renderPracticeHero(stats, todayRounds) {
+  const today = localDateKey();
+  $('practice-view').innerHTML = `
+    <header class="dashboard-hero practice-hero">
+      <div><span class="kicker">Entraînement</span><h2>Practice, graded.</h2>
+      <p>Pick a game or let it mix — every answer earns XP, builds your practice streak and tracks your best round.</p></div>
+      <div class="practice-stats">
+        <div class="practice-stat"><small>XP</small><b>${stats.xp}</b></div>
+        <div class="practice-stat"><small>🔥 Streak</small><b>${stats.streak}${stats.streak === 1 ? ' day' : ' days'}</b></div>
+        <div class="practice-stat"><small>Best round</small><b>${stats.best}%</b></div>
+        <div class="practice-stat"><small>Rounds today</small><b>${todayRounds}</b></div>
+      </div>
+      <div class="practice-actions"><button class="button blue" id="practice-start" type="button">▶ Start</button><button class="button paper" id="practice-reset" type="button">Reset stats</button></div>
+    </header>
+    <div class="practice-modes" role="tablist" aria-label="Practice formats">${PRACTICE_MODES.map(mode => `<button class="practice-mode ${mode.id === practiceMode ? 'active' : ''}" type="button" data-mode="${mode.id}" role="tab" aria-selected="${mode.id === practiceMode}"><span class="practice-mode-emoji">${mode.emoji}</span><div><b>${mode.label}</b><small>${mode.blurb}</small></div></button>`).join('')}</div>
+    <div class="practice-stage" id="practice-stage"></div>`;
+  $('practice-view').querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
+    practiceMode = button.dataset.mode;
+    renderPractice();
+  }));
+  $('practice-start').addEventListener('click', () => startPractice(practiceMode));
+  $('practice-reset').addEventListener('click', () => {
+    if (confirm('Reset all practice stats?')) { localStorage.removeItem(PRACTICE_KEY); renderPractice(); }
+  });
+}
+
+async function startPractice(mode) {
   if (!state.lesson?.transcript?.length && state.manifest?.lessons?.[0]) {
     try {
       const response = await siteFetch(state.manifest.lessons[0].path);
       if (response.ok) state.lesson = parseLesson(await response.text());
     } catch { /* keep whatever lesson is loaded */ }
   }
-  practiceQuestions = makePracticeQuestions();
+  practiceMode = mode || practiceMode;
+  practiceQuestions = buildPracticeQuestions(practiceMode);
   practiceIndex = 0;
+  practiceAnswers = [];
   if (!practiceQuestions.length) {
-    $('practice-stage').innerHTML = '<div class="empty-section">Add some words to your list first, or mark lesson vocabulary learned.</div>';
+    const stage = $('practice-stage');
+    if (stage) stage.innerHTML = '<div class="empty-section">Add some words to your list first, or mark lesson vocabulary learned.</div>';
     return;
   }
+  practiceRound += 1;
   renderPracticeQuestion();
 }
 
 function renderPracticeQuestion() {
   const question = practiceQuestions[practiceIndex];
   const count = practiceQuestions.length;
+  const stage = $('practice-stage');
   let body = '';
   if (question.type === 'mc') {
     body = `<div class="quiz-form">${question.options.map((option, index) => `<label class="answer-label"><input type="radio" name="practicemc" value="${index}"><span>${inlineMarkdown(option.text)}</span></label>`).join('')}</div>`;
-  } else if (question.type === 'typing') {
-    body = '<label class="answer-label fill"><span>✍ Type your answer:</span><input class="fill-input" type="text" autocomplete="off" spellcheck="false" aria-label="Your answer"></label>';
-  } else {
-    body = '<div class="order-area"><div class="order-src" id="practice-src"></div><ol class="order-target" id="practice-target"></ol></div>';
+  } else if (question.type === 'typing' || question.type === 'fill') {
+    body = `<label class="answer-label fill"><span>✍ ${question.type === 'fill' ? 'Complete the sentence:' : 'Type your answer:'}</span><input class="fill-input" type="text" autocomplete="off" spellcheck="false" aria-label="Your answer"></label>`;
+  } else if (question.type === 'spoken') {
+    body = `<div class="spoken-wrap"><button class="button paper" id="practice-speak" type="button">🔊 Hear it again</button><label class="answer-label fill"><span>✍ Write what you heard:</span><input class="fill-input" type="text" autocomplete="off" spellcheck="false" aria-label="Your answer"></label></div>`;
+  } else if (question.type === 'grammar') {
+    body = `<label class="answer-label fill"><span>🧩 Type the grammar concept:</span><input class="fill-input" type="text" autocomplete="off" spellcheck="false" aria-label="Your answer"></label>`;
+  } else if (question.type === 'order') {
+    body = `<div class="order-area"><div class="order-src" id="practice-src"></div><ol class="order-target" id="practice-target"></ol></div>`;
+  } else if (question.type === 'matching') {
+    body = `<div class="matching-area" id="practice-matching"></div>`;
   }
-  $('practice-stage').innerHTML = `
-    <div class="quiz-question practice-question">
-      <div class="quiz-prompt">${practiceIndex + 1}. ${inlineMarkdown(question.question || '')}</div>
+  stage.innerHTML = `
+    <div class="quiz-question practice-question" data-qtype="${question.type}">
+      <div class="quiz-prompt">${practiceIndex + 1} / ${count} · ${question.points} XP · ${escapeHtml(question.mode || question.type)}</div>
+      <div class="quiz-prompt-title">${inlineMarkdown(question.question || question.prompt || '')}</div>
+      ${question.hint ? `<div class="practice-hint">💡 ${escapeHtml(question.hint)}</div>` : ''}
       ${body}
       <p class="question-feedback practice-feedback" hidden></p>
     </div>
-    <div class="quiz-footer"><button class="button blue" id="practice-check" type="button">Check</button><button class="button paper" id="practice-skip" type="button">Skip</button><span class="quiz-score">${practiceIndex + 1} / ${count}</span></div>`;
+    <div class="quiz-footer">
+      <button class="button blue" id="practice-check" type="button">Check</button>
+      <button class="button paper" id="practice-skip" type="button">Skip</button>
+      <span class="quiz-score">${practiceIndex + 1} / ${count}</span>
+    </div>`;
   if (question.type === 'order') {
     const expected = question.answer.split(/\s+/).slice(0, 8);
     const source = shuffle(expected);
     const src = $('practice-src');
-    source.forEach(word => { const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'order-chip'; chip.textContent = word; chip.addEventListener('click', () => { chip.remove(); const item = document.createElement('li'); item.className = 'order-chip'; item.textContent = word; item.addEventListener('click', () => { item.remove(); src.appendChild(chip); }); $('practice-target').appendChild(item); }); src.appendChild(chip); });
+    const target = $('practice-target');
+    source.forEach(word => {
+      const chip = document.createElement('button');
+      chip.type = 'button'; chip.className = 'order-chip'; chip.textContent = word;
+      chip.addEventListener('click', () => {
+        chip.remove();
+        const item = document.createElement('li');
+        item.className = 'order-chip'; item.textContent = word;
+        item.addEventListener('click', () => { item.remove(); src.appendChild(chip); });
+        target.appendChild(item);
+      });
+      src.appendChild(chip);
+    });
+  } else if (question.type === 'matching') {
+    renderMatching($('practice-matching'), question);
+  } else if (question.type === 'spoken') {
+    const speakBtn = $('practice-speak');
+    if (speakBtn) speakBtn.addEventListener('click', () => speakInline(question.audio));
   }
   $('practice-check').addEventListener('click', checkPractice);
-  $('practice-skip').addEventListener('click', () => { practiceIndex += 1; if (practiceIndex >= practiceQuestions.length) finishPractice(); else renderPracticeQuestion(); });
+  $('practice-skip').addEventListener('click', () => { practiceAnswers.push({ q: practiceIndex, correct: null }); advancePractice(); });
+}
+
+function speakInline(text) {
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'fr-FR';
+    utterance.rate = 0.85;
+    const voices = window.speechSynthesis.getVoices();
+    const frenchVoice = voices.find(voice => voice.lang?.toLowerCase().startsWith('fr'));
+    if (frenchVoice) utterance.voice = frenchVoice;
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
+function renderMatching(container, question) {
+  const left = shuffle(question.pairs.map(pair => ({ key: pair.fr, label: pair.fr, pair: pair.en })));
+  const right = shuffle(question.pairs.map(pair => ({ label: pair.en, pair: pair.fr })));
+  const chosen = { fr: null, en: null };
+  container.innerHTML = `<div class="matching-col" id="m-left">${left.map((item, i) => `<button class="match-chip" type="button" data-side="fr" data-index="${i}">${escapeHtml(item.label)}</button>`).join('')}</div><div class="matching-col" id="m-right">${right.map((item, i) => `<button class="match-chip" type="button" data-side="en" data-index="${i}">${escapeHtml(item.label)}</button>`).join('')}</div><div class="matching-status" id="m-status"></div>`;
+  const chipped = {};
+  const mark = () => {
+    container.querySelectorAll('.match-chip').forEach(btn => btn.classList.toggle('selected', chipped[btn.dataset.side] === Number(btn.dataset.index)));
+  };
+  container.querySelectorAll('.match-chip').forEach(btn => btn.addEventListener('click', () => {
+    const side = btn.dataset.side;
+    chipped[side] = Number(btn.dataset.index);
+    mark();
+    if (chipped.fr !== undefined && chipped.en !== undefined) {
+      const fr = left[chipped.fr];
+      const en = right[chipped.en];
+      const ok = fr.pair === en.label;
+      const status = container.querySelector('#m-status');
+      status.textContent = ok ? `✓ “${fr.pair}” matches.` : `✗ “${fr.label}” is “${fr.pair}”, not “${en.label}”.`;
+      status.className = 'matching-status ' + (ok ? 'ok' : 'bad');
+      container.dataset.lastOk = ok;
+      chipped.fr = chipped.en = undefined;
+      mark();
+    }
+  }));
+}
+
+function gradeAnswerValue(question, element) {
+  if (question.type === 'mc') {
+    const selected = element.querySelector('input:checked');
+    return selected ? question.options[Number(selected.value)].correct : false;
+  }
+  if (question.type === 'matching') {
+    return element.querySelector('.matching-status')?.classList.contains('ok') ? true : false;
+  }
+  if (question.type === 'order') {
+    const words = [...element.querySelectorAll('.order-target .order-chip')].map(node => node.textContent.trim()).join(' ');
+    return normalize(words) === normalize(question.answer);
+  }
+  if (question.type === 'spoken' || question.type === 'fill' || question.type === 'grammar' || question.type === 'typing') {
+    const value = element.querySelector('.fill-input')?.value || '';
+    if (question.type === 'grammar') {
+      return normalize(value) === normalize(question.answer);
+    }
+    return normalize(value) === normalize(question.answer);
+  }
+  return false;
 }
 
 function checkPractice() {
   const question = practiceQuestions[practiceIndex];
-  const field = $('practice-stage').querySelector('.practice-question');
-  let isCorrect = false;
-  if (question.type === 'mc') {
-    const selected = field.querySelector('input:checked');
-    if (selected) isCorrect = question.options[Number(selected.value)].correct;
-  } else if (question.type === 'typing') {
-    const value = field.querySelector('.fill-input')?.value || '';
-    isCorrect = normalize(value) === normalize(question.answer);
-  } else {
-    const words = [...$('practice-target').querySelectorAll('.order-chip')].map(node => node.textContent.trim());
-    isCorrect = normalize(words.join(' ')) === normalize(question.answer);
-  }
+  const field = document.querySelector('.practice-question');
+  const isCorrect = gradeAnswerValue(question, field);
   field.classList.add(isCorrect ? 'correct' : 'incorrect');
   const feedback = field.querySelector('.question-feedback');
-  feedback.hidden = false;
-  feedback.innerHTML = isCorrect ? '✓ Correct.' : `The answer: <b>${inlineMarkdown(escapeHtml(question.answer))}</b>`;
-  if (isCorrect) recordActivity('practice');
+  if (feedback) {
+    feedback.hidden = false;
+    let expected = '';
+    if (question.type === 'mc') expected = question.answer;
+    else if (question.type === 'matching') expected = ''; // shown inline
+    else if (question.type === 'order' || question.type === 'fill' || question.type === 'spoken') expected = question.answer;
+    else if (question.type === 'grammar') expected = question.answer;
+    feedback.innerHTML = isCorrect ? '✓ Correct.' : expected ? `The answer: <b>${inlineMarkdown(escapeHtml(expected))}</b>` : 'Try again.';
+    if (isCorrect) recordPracticeCorrect(question.points);
+  }
   const check = $('practice-check');
-  check.innerHTML = isCorrect ? 'Next →' : 'Continue →';
-  check.onclick = () => { practiceIndex += 1; if (practiceIndex >= practiceQuestions.length) finishPractice(); else renderPracticeQuestion(); };
+  check.innerHTML = 'Next →';
+  check.onclick = () => { practiceAnswers.push({ q: practiceIndex, correct: isCorrect }); advancePractice(); };
+}
+
+function recordPracticeCorrect(points = 10) {
+  const stats = practiceStats();
+  stats.xp = (stats.xp || 0) + points;
+  stats.answers = (stats.answers || 0) + 1;
+  stats.correct = (stats.correct || 0) + 1;
+  updatePracticeStreak(stats);
+  savePracticeStats(stats);
+  recordActivity('practice');
+}
+
+function updatePracticeStreak(stats) {
+  const today = localDateKey();
+  stats.days = stats.days || {};
+  stats.days[today] = { rounds: (stats.days[today]?.rounds || 0) + 1, xp: (stats.days[today]?.xp || 0) };
+  const yesterday = localDateKey(new Date(Date.now() - 86400000));
+  if (stats.last !== today) {
+    stats.streak = stats.last === yesterday ? (stats.streak || 0) + 1 : 1;
+  }
+  stats.last = today;
+}
+
+function advancePractice() {
+  practiceIndex += 1;
+  if (practiceIndex >= practiceQuestions.length) finishPractice();
+  else renderPracticeQuestion();
 }
 
 function finishPractice() {
   const total = practiceQuestions.length;
-  const attempted = total;
-  $('practice-stage').innerHTML = `<div class="practice-done"><span>🎉</span><b>Round finished!</b><p>Keep practicing — repetition builds memory.</p><button class="button blue" id="practice-round" type="button">Another round</button></div>`;
-  $('practice-round').addEventListener('click', startPractice);
+  const correct = practiceAnswers.filter(a => a && a.correct === true).length;
+  const pct = total ? Math.round(correct / total * 100) : 0;
+  const stats = practiceStats();
+  stats.best = Math.max(stats.best || 0, pct);
+  stats.rounds = (stats.rounds || 0) + 1;
+  savePracticeStats(stats);
+  $('practice-stage').innerHTML = `<div class="practice-done">
+    <span>🎉</span><b>Round finished!</b>
+    <p>${correct}/${total} correct · <b>${pct}%</b></p>
+    <div class="practice-stats-inline"><span>🔥 Streak <b>${stats.streak}</b></span><span>✨ XP <b>${stats.xp}</b></span><span>🏆 Best <b>${stats.best}%</b></span></div>
+    <button class="button blue" id="practice-round" type="button">Another round</button>
+  </div>`;
+  $('practice-round').addEventListener('click', () => startPractice(practiceMode));
+  const statEls = document.querySelectorAll('.practice-stat b');
+  if (statEls.length >= 4) {
+    statEls[0].textContent = stats.xp;
+    statEls[1].textContent = `${stats.streak}${stats.streak === 1 ? ' day' : ' days'}`;
+    statEls[2].textContent = `${stats.best}%`;
+    statEls[3].textContent = practiceToday(stats);
+  }
 }
 
 async function loadLesson(item, requestedTab = null) {
@@ -1746,6 +2320,7 @@ $('dashboard-button').addEventListener('click', () => { location.hash = 'view=da
 $('wordlist-button').addEventListener('click', () => { location.hash = 'view=wordlist'; });
 $('review-button').addEventListener('click', () => { location.hash = 'view=review'; });
 $('library-button')?.addEventListener('click', () => { location.hash = 'view=library'; });
+$('practice-button')?.addEventListener('click', () => { location.hash = 'view=practice'; });
 $('theme-button').addEventListener('click', () => { const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; localStorage.setItem('atelier-theme', next); $('theme-button').textContent = next === 'dark' ? '☀' : '☾'; });
 $('reset-lesson').addEventListener('click', () => { localStorage.removeItem(progressKey()); state.cardIndex = 0; state.cardRevealed = false; updateProgress(); renderActiveTab(); });
 $('retry-button').addEventListener('click', loadManifest);
@@ -1757,7 +2332,7 @@ window.addEventListener('hashchange', async () => {
   if (route.view === 'review') { showReview(); return; }
   if (route.view === 'library') { showLibrary(); return; }
   if (route.view === 'practice') { showPractice(); return; }
-  if (route.view === 'reader' && route.file) { showReader(route.file); return; }
+  if (route.view === 'reader' && route.file) { showReader(route.file, route.type); return; }
   if (route.view === 'home') { showHome(); return; }
   if (route.wordlistFilter) state.wordlistFilter = route.wordlistFilter;
   if (route.reviewFilter) state.reviewFilter = route.reviewFilter;

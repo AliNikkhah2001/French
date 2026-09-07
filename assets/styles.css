@@ -551,6 +551,18 @@ html[data-theme="dark"] .reader-body { background: #0d1217; }
 .reader-canvas { display: block; background: #fff; box-shadow: 0 6px 22px rgba(0, 0, 0, .28); border-radius: 2px; }
 .reader-loading { color: var(--cream); text-align: center; padding: 60px 20px; }
 .reader-loading small { display: block; margin-top: 8px; opacity: .7; }
+
+/* ---------- EPUB reader ---------- */
+.epub-body { background: var(--cream); justify-content: stretch; padding: 0; }
+.epub-section { max-width: 720px; margin: 0 auto; padding: 26px 22px 60px; line-height: 1.75; color: var(--ink); height: 100%; overflow: visible; }
+html[data-theme="dark"] .epub-section { color: var(--ink); }
+.epub-section p { margin: 0 0 1.1em; }
+.epub-section h1, .epub-section h2, .epub-section h3, .epub-section h4 { font-family: Georgia, serif; line-height: 1.3; margin: 1.2em 0 .5em; }
+.epub-section h1 { font-size: 1.6em; } .epub-section h2 { font-size: 1.3em; }
+.epub-section .epub-word { cursor: pointer; border-bottom: 1px dotted transparent; }
+.epub-section .epub-word:hover { background: var(--yellow-soft, rgba(245, 200, 75, .35)); border-bottom-color: var(--blue-2); }
+.epub-highlight { background: rgba(245, 200, 75, .5); color: inherit; padding: 0 1px; border-radius: 3px; }
+.epub-tools { grid-column: 1 / -1; color: var(--muted); font-size: .7rem; }
 .reader-footer { border-top: 1px solid var(--hairline); background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 10px 14px; display: grid; grid-template-columns: 1fr auto; gap: 10px; }
 .reader-progress { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--line) 70%, transparent); overflow: hidden; }
 .reader-progress i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue-2), var(--gold)); }
@@ -568,13 +580,45 @@ html[data-theme="dark"] .reader-body { background: #0d1217; }
 .order-chip:hover { border-color: var(--blue); }
 .quiz-prompt { font-weight: 800; padding: 0 4px; }
 
-/* ---------- Practice ---------- */
-.practice-stage { margin-top: 18px; }
-.practice-question { display: grid; gap: 6px; }
-.practice-question .quiz-prompt { font-size: 1.05rem; }
+/* ---------- Practice (dedicated section) ---------- */
 .review-actions { display: flex; flex-direction: column; gap: 10px; }
 .practice-entry { justify-self: start; }
-.practice-done { text-align: center; padding: 40px 20px; border: 1px solid var(--hairline); border-radius: 16px; background: var(--paper); }
-.practice-done span { font-size: 2.4rem; display: block; margin-bottom: 8px; }
+.practice-hero { align-items: center; flex-wrap: wrap; }
+.practice-stats { display: flex; flex-wrap: wrap; gap: 9px; }
+.practice-stat { min-width: 90px; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--paper); text-align: center; }
+.practice-stat small { display: block; color: var(--muted); font-size: .66rem; text-transform: uppercase; letter-spacing: .07em; }
+.practice-stat b { display: block; margin-top: 3px; font: 500 1.4rem/1 Georgia, serif; color: var(--blue); }
+.practice-actions { display: flex; gap: 9px; margin-top: 16px; flex: 0 0 100%; }
+.practice-modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 20px; }
+.practice-mode { display: flex; align-items: center; gap: 11px; border: 1px solid var(--hairline); border-radius: 14px; padding: 13px 14px; background: var(--paper); color: var(--ink); text-align: left; cursor: pointer; box-shadow: var(--soft-shadow); transition: border-color .18s ease, box-shadow .18s ease; }
+.practice-mode:hover { border-color: var(--blue-2); }
+.practice-mode.active { border-color: var(--blue); background: var(--blue-soft); box-shadow: inset 3px 0 0 var(--blue); }
+.practice-mode-emoji { font-size: 1.6rem; }
+.practice-mode b, .practice-mode small { display: block; }
+.practice-mode b { font-size: .9rem; }
+.practice-mode small { color: var(--muted); font-size: .68rem; margin-top: 2px; }
+.practice-stage { margin-top: 20px; }
+.practice-question { display: grid; gap: 8px; }
+.practice-question .quiz-prompt { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+.practice-question .quiz-prompt-title { font-size: 1.1rem; font-weight: 800; }
+.practice-hint { color: var(--muted); font-size: .82rem; }
+.spoken-wrap { display: grid; gap: 10px; justify-items: start; }
+.matching-area { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.matching-col { display: grid; gap: 8px; align-content: start; }
+.matching-status { grid-column: 1 / -1; font-size: .9rem; font-weight: 800; }
+.matching-status.ok { color: #4b9c73; }
+.matching-status.bad { color: var(--red); }
+.match-chip { border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px; background: var(--paper); color: var(--ink); font: inherit; text-align: left; cursor: pointer; font-size: .9rem; }
+.match-chip:hover { border-color: var(--blue); }
+.match-chip.selected { border-color: var(--blue); background: var(--blue-soft); }
+.practice-done { text-align: center; padding: 34px 20px; border: 1px solid var(--hairline); border-radius: 16px; background: var(--paper); box-shadow: var(--soft-shadow); }
+.practice-done span { font-size: 2.4rem; display: block; margin-bottom: 6px; }
 .practice-done b { font-size: 1.3rem; }
-.practice-done p { color: var(--muted); }
+.practice-done p { color: var(--muted); margin: 8px 0 0; }
+.practice-stats-inline { display: flex; justify-content: center; gap: 18px; margin: 14px 0 18px; flex-wrap: wrap; }
+.practice-stats-inline span { font-size: .85rem; }
+.practice-stats-inline b { color: var(--blue); font-size: 1rem; }
+@media (max-width: 560px) {
+  .matching-area { grid-template-columns: 1fr; }
+  .practice-modes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
