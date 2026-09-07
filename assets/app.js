@@ -747,9 +747,6 @@ async function extractEpubSpine(zip) {
   if (!opf) throw new Error('Cannot find the EPUB package.');
   const opfText = await opf.async('text');
   const baseDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/') + 1) : '';
-  const idHref = [];
-  const manifestAttrs = opfText.match(/<item\b[^>]*\b(id\s*=\s*["'][^"']*["'])[^>]*\bhref\s*=\s*["']([^"']+)["']/gi);
-  (manifestAttrs || []).forEach(match => idHref.push([match]));
   const spineIds = [];
   const spineMatch = opfText.match(/<spine[^>]*>([\s\S]*?)<\/spine>/i);
   if (spineMatch) {
@@ -757,11 +754,22 @@ async function extractEpubSpine(zip) {
     idrefs.forEach(ref => { const m = ref.match(/idref\s*=\s*["']([^"']+)["']/i); if (m) spineIds.push(m[1]); });
   }
   const hrefById = {};
-  const itemRe = /<item\b[^>]*\bid\s*=\s*["']([^"']+)["'][^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>/gi;
+  const mediaById = {};
+  const itemRe = /<item\b([^>]*)\/?>/gi;
   let itemMatch;
-  while ((itemMatch = itemRe.exec(opfText))) hrefById[itemMatch[1]] = itemMatch[2];
+  while ((itemMatch = itemRe.exec(opfText))) {
+    const attrs = itemMatch[1];
+    const id = (attrs.match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
+    const href = (attrs.match(/\bhref\s*=\s*["']([^"']+)["']/i) || [])[1];
+    const mediaType = (attrs.match(/media-type\s*=\s*["']([^"']+)["']/i) || [])[1];
+    if (id && href) {
+      hrefById[id] = href;
+      mediaById[id] = mediaType || '';
+    }
+  }
   const sections = [];
   for (const id of spineIds) {
+    if (!/xhtml|html/i.test(mediaById[id] || '')) continue;
     const href = hrefById[id];
     if (!href) continue;
     const full = normalizeEpubHref(baseDir + href);
@@ -770,6 +778,22 @@ async function extractEpubSpine(zip) {
     if (!file) continue;
     const text = await file.async('text');
     sections.push({ href: full, text });
+  }
+  if (!sections.length) {
+    const seen = new Set();
+    for (const id of Object.keys(mediaById)) {
+      if (!/xhtml|html/i.test(mediaById[id] || '')) continue;
+      const href = hrefById[id];
+      if (!href) continue;
+      const full = normalizeEpubHref(baseDir + href);
+      const decoded = decodeURIComponent(full.split('#')[0]);
+      if (seen.has(decoded)) continue;
+      seen.add(decoded);
+      const file = zip.file(decoded);
+      if (!file) continue;
+      const text = await file.async('text');
+      sections.push({ href: full, text });
+    }
   }
   return sections;
 }
