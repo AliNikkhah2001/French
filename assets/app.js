@@ -2368,6 +2368,15 @@ window.addEventListener('hashchange', async () => {
 
 /* ------------------- Service worker & PWA install ------------------- */
 
+// One-time cache reset: open the app as ?reset to drop the old service worker + caches.
+if (new URLSearchParams(location.search).has('reset')) {
+  const cleanup = [
+    ('caches' in window) ? caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key)))).catch(() => {}) : Promise.resolve(),
+    ('serviceWorker' in navigator) ? navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(registration => registration.unregister()))).catch(() => {}) : Promise.resolve()
+  ];
+  Promise.all(cleanup).then(() => { if (location.search.includes('reset')) location.replace(location.pathname + location.hash); });
+}
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     // Try root scope first (controls entire /French/ site), fallback to assets scope
