@@ -559,9 +559,11 @@ function showReader(file, kind) {
   closeMobileLibrary();
   state.view = 'reader';
   state.pdfFile = file || '';
-  if (kind === 'epub') { showEpubReader(state.pdfFile); return; }
+  const isPdf = /\.pdf$/i.test(state.pdfFile);
+  if (!isPdf) { showEpubReader(state.pdfFile); return; }
   state.pdfDoc = null;
   state.pdfPage = 1;
+  state.pdfTextView = false;
   loadPdfMemory(state.pdfFile);
   const title = decodeURIComponent(state.pdfFile.split('/').pop() || '');
   $('reader-view').innerHTML = `
@@ -574,6 +576,7 @@ function showReader(file, kind) {
           <input id="reader-page" type="number" min="1" value="1" aria-label="Page number">
           <span class="reader-count" id="reader-count">/ 1</span>
           <button class="reader-btn" data-pdf="next" type="button" aria-label="Next page">›</button>
+          <button class="reader-btn" data-pdf="text" id="pdf-text-toggle" type="button">📄 Text</button>
           <button class="reader-btn" data-pdf="zoomout" type="button" aria-label="Zoom out">−</button>
           <button class="reader-btn" data-pdf="zoomin" type="button" aria-label="Zoom in">+</button>
           <button class="reader-btn bookmark" id="reader-bookmark" type="button">☆ Read</button>
@@ -591,7 +594,7 @@ function showReader(file, kind) {
   $('reader-note').value = state.pdfMemory.note || '';
   $('reader-note').addEventListener('input', event => { state.pdfMemory.note = event.target.value; savePdfMemory(state.pdfFile); });
   $('reader-note').addEventListener('blur', () => { if (state.pdfMemory.note && state.pdfMemory.note.trim()) recordActivity('reading'); });
-  $('reader-reset').addEventListener('click', () => { state.pdfMemory = { page: 1, zoom: 0, bookmarks: [], note: $('reader-note').value || '' }; state.pdfFitted = false; savePdfMemory(state.pdfFile); goToPage(1); });
+  $('reader-reset').addEventListener('click', () => { state.pdfMemory = { page: 1, zoom: 0, bookmarks: [], highlights: [], note: $('reader-note').value || '' }; state.pdfFitted = false; savePdfMemory(state.pdfFile); goToPage(1); });
   $('reader-page').addEventListener('change', event => { const page = Math.max(1, Math.min(state.pdfDoc?.numPages || 1, Number(event.target.value) || 1)); goToPage(page); });
   $('reader-bookmark').addEventListener('click', toggleBookmark);
   $('reader-view').querySelectorAll('[data-pdf]').forEach(button => button.addEventListener('click', () => {
@@ -600,6 +603,7 @@ function showReader(file, kind) {
     else if (action === 'next') goToPage(state.pdfPage + 1);
     else if (action === 'zoomin') setZoom(state.pdfZoom * 1.18);
     else if (action === 'zoomout') setZoom(state.pdfZoom / 1.18);
+    else if (action === 'text') togglePdfTextView();
   }));
   loadPdfDocument();
 }
@@ -629,6 +633,8 @@ async function goToPage(page) {
   state._renderTask = null;
   let pageObj;
   try { pageObj = await state.pdfDoc.getPage(target); } catch { return; }
+  state.pdfPageObj = pageObj;
+  state.pdfPageNum = target;
   const baseViewport = pageObj.getViewport({ scale: 1 });
   if (!state.pdfFitted) {
     const body = $('reader-body');
@@ -658,6 +664,7 @@ async function goToPage(page) {
   updateBookmarkButton();
   state.pdfMemory.lastRead = Date.now();
   savePdfMemory(state.pdfFile);
+  if (state.pdfTextView) mountPdfTextView();
 }
 
 function setZoom(nextZoom) {
@@ -684,6 +691,91 @@ function toggleBookmark() {
   savePdfMemory(state.pdfFile);
   updateBookmarkButton();
   recordActivity('reading');
+}
+
+function togglePdfTextView() {
+  state.pdfTextView = !state.pdfTextView;
+  const btn = $('pdf-text-toggle');
+  if (btn) btn.classList.toggle('active', state.pdfTextView);
+  if (state.pdfTextView) mountPdfTextView();
+  else goToPage(state.pdfPage);
+}
+
+async function mountPdfTextView() {
+  const body = $('reader-body');
+  body.innerHTML = '<div class="reader-loading">Extracting text…</div>';
+  try {
+    if (!state.pdfPageObj) throw new Error('No page loaded.');
+    const content = await state.pdfPageObj.getTextContent();
+    const lines = content.items.filter(item => item.str && item.str.trim()).map(item => item.str.trim());
+    if (!lines.length) { body.innerHTML = '<div class="reader-loading">This page has no selectable text (scanned image). Use the page view.</div>'; return; }
+    const container = document.createElement('div');
+    container.className = 'epub-section pdf-text';
+    const doc = document.createElement('div');
+    lines.forEach(line => { const p = document.createElement('p'); p.textContent = line; doc.appendChild(p); });
+    renderEpubContent(container, doc);
+    body.replaceChildren(container);
+    bindPdfText(container);
+    restorePdfHighlights();
+  } catch (error) {
+    body.innerHTML = `<div class="reader-loading">Could not extract text.<br><small>${escapeHtml(error?.message || '')}</small></div>`;
+  }
+}
+
+function bindPdfText(container) {
+  container.addEventListener('click', event => {
+    const wordEl = event.target.closest('.epub-word');
+    if (wordEl) { openDictionary(wordEl, wordEl.dataset.word); return; }
+  });
+  container.addEventListener('mouseup', () => pdfHighlightSelection(container));
+}
+
+function pdfHighlightSelection(container) {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed) return;
+  const text = selection.toString().trim();
+  if (!text || text.length < 2) return;
+  const range = selection.getRangeAt(0);
+  if (!container.contains(range.commonAncestorContainer)) return;
+  const mark = document.createElement('mark');
+  mark.className = 'epub-highlight';
+  try { range.surroundContents(mark); } catch { return; }
+  selection.removeAllRanges();
+  state.pdfMemory.highlights = state.pdfMemory.highlights || [];
+  state.pdfMemory.highlights.push({ section: state.pdfPage, text: text.slice(0, 200) });
+  savePdfMemory(state.pdfFile);
+  recordActivity('highlight');
+  showToast('Passage highlighted.', 'success');
+}
+
+function restorePdfHighlights() {
+  const container = document.querySelector('.pdf-text');
+  if (!container) return;
+  container.querySelectorAll('.epub-highlight').forEach(mark => {
+    const parent = mark.parentNode;
+    while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+    mark.remove();
+    parent.normalize();
+  });
+  const highlights = (state.pdfMemory.highlights || []).filter(h => h && h.section === state.pdfPage);
+  highlights.forEach(highlight => {
+    if (!highlight.text) return;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    while (node) {
+      const index = node.textContent.indexOf(highlight.text);
+      if (index >= 0) {
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + highlight.text.length);
+        const mark = document.createElement('mark');
+        mark.className = 'epub-highlight';
+        try { range.surroundContents(mark); } catch { /* ignore */ }
+        break;
+      }
+      node = walker.nextNode();
+    }
+  });
 }
 
 /* ------------------- EPUB reader ------------------- */
@@ -1013,6 +1105,7 @@ const PRACTICE_KEY = 'atelier-practice-v1';
 let practiceQuestions = [];
 let practiceIndex = 0;
 let practiceMode = 'mixed';
+let practiceSource = 'words';
 let practiceRound = 0;
 let practiceAnswers = [];
 
@@ -1038,6 +1131,13 @@ const PRACTICE_MODES = [
 ];
 
 function practicePool() {
+  if (practiceSource === 'lesson' && state.lesson?.vocabulary?.length) {
+    return state.lesson.vocabulary.map(word => ({
+      french: (word.french || '').replace(/<[^>]+>/g, '').split('/')[0].trim(),
+      english: word.english || '',
+      type: word.type || 'vocab'
+    })).filter(word => word.french);
+  }
   const words = getWordList();
   if (words.length >= 6) {
     return words.map(word => ({ french: word.french, english: word.english || '', type: word.type || 'vocab' }));
@@ -1056,6 +1156,13 @@ function practiceLines() {
 }
 
 function grammarQuestions() {
+  if (state.lesson?.grammar?.length) {
+    return state.lesson.grammar.map((item, index) => ({
+      title: item.title,
+      answer: item.title,
+      lesson: state.selected?.title || 'This lesson'
+    }));
+  }
   const entities = state.analytics?.entities?.grammar || [];
   return entities.map(item => ({
     title: item.title,
@@ -1170,6 +1277,7 @@ function practiceToday(stats) {
 
 function renderPracticeHero(stats, todayRounds) {
   const today = localDateKey();
+  const currentLesson = state.selected;
   $('practice-view').innerHTML = `
     <header class="dashboard-hero practice-hero">
       <div><span class="kicker">Entraînement</span><h2>Practice, graded.</h2>
@@ -1182,10 +1290,21 @@ function renderPracticeHero(stats, todayRounds) {
       </div>
       <div class="practice-actions"><button class="button blue" id="practice-start" type="button">▶ Start</button><button class="button paper" id="practice-reset" type="button">Reset stats</button></div>
     </header>
+    <div class="practice-source">
+      <span class="kicker" style="margin-right:10px">Source</span>
+      <button class="word-filter ${practiceSource === 'lesson' ? 'active' : ''}" type="button" data-source="lesson" ${currentLesson ? '' : 'disabled'}>📖 This lesson${currentLesson ? ` — ${escapeHtml(currentLesson.title)}` : ''}</button>
+      <button class="word-filter ${practiceSource === 'words' ? 'active' : ''}" type="button" data-source="words">🗒️ My word list</button>
+      <span class="practice-source-hint">${practiceSource === 'lesson' ? `Questions come from “${escapeHtml(currentLesson?.title || 'this lesson')}” (${currentLesson?.type || ''}).` : 'Questions come from every word you added.'}</span>
+    </div>
     <div class="practice-modes" role="tablist" aria-label="Practice formats">${PRACTICE_MODES.map(mode => `<button class="practice-mode ${mode.id === practiceMode ? 'active' : ''}" type="button" data-mode="${mode.id}" role="tab" aria-selected="${mode.id === practiceMode}"><span class="practice-mode-emoji">${mode.emoji}</span><div><b>${mode.label}</b><small>${mode.blurb}</small></div></button>`).join('')}</div>
     <div class="practice-stage" id="practice-stage"></div>`;
   $('practice-view').querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
     practiceMode = button.dataset.mode;
+    renderPractice();
+  }));
+  $('practice-view').querySelectorAll('[data-source]').forEach(button => button.addEventListener('click', () => {
+    if (button.disabled) return;
+    practiceSource = button.dataset.source;
     renderPractice();
   }));
   $('practice-start').addEventListener('click', () => startPractice(practiceMode));
@@ -1195,7 +1314,15 @@ function renderPracticeHero(stats, todayRounds) {
 }
 
 async function startPractice(mode) {
-  if (!state.lesson?.transcript?.length && state.manifest?.lessons?.[0]) {
+  if (practiceSource === 'lesson') {
+    const target = state.selected || state.manifest?.lessons?.[0];
+    if (target && (!state.lesson || state.selected?.slug !== state.lesson?.slug)) {
+      try {
+        const response = await siteFetch(target.path);
+        if (response.ok) { state.selected = target; state.lesson = parseLesson(await response.text()); }
+      } catch { /* keep whatever lesson is loaded */ }
+    }
+  } else if (!state.lesson?.transcript?.length && state.manifest?.lessons?.[0]) {
     try {
       const response = await siteFetch(state.manifest.lessons[0].path);
       if (response.ok) state.lesson = parseLesson(await response.text());
@@ -1207,7 +1334,7 @@ async function startPractice(mode) {
   practiceAnswers = [];
   if (!practiceQuestions.length) {
     const stage = $('practice-stage');
-    if (stage) stage.innerHTML = '<div class="empty-section">Add some words to your list first, or mark lesson vocabulary learned.</div>';
+    if (stage) stage.innerHTML = '<div class="empty-section">No material yet — add some words, or open a lesson and choose “This lesson”.</div>';
     return;
   }
   practiceRound += 1;
@@ -1446,7 +1573,12 @@ function hydrateLessonHeader() {
   $('poster-word').textContent = ({ podcast: 'ÉCOUTEZ!', book: 'LISEZ!', article: 'LISEZ!', video: 'REGARDEZ!', guide: 'RÉVISEZ!' })[item.type] || 'APPRENEZ!';
   const source = externalUrl(metadata.source_url || item.source_url);
   const apple = externalUrl(metadata.apple_url || item.apple_url);
-  $('source-actions').innerHTML = [source ? `<a class="button blue" href="${escapeHtml(source)}" target="_blank" rel="noopener">Open original source ↗</a>` : '', apple ? `<a class="button paper" href="${escapeHtml(apple)}" target="_blank" rel="noopener">Apple Podcasts ↗</a>` : ''].join('');
+  $('source-actions').innerHTML = [`<button class="button paper" id="practice-this-lesson" type="button">🎲 Practice this lesson</button>`, source ? `<a class="button blue" href="${escapeHtml(source)}" target="_blank" rel="noopener">Open original source ↗</a>` : '', apple ? `<a class="button paper" href="${escapeHtml(apple)}" target="_blank" rel="noopener">Apple Podcasts ↗</a>` : ''].join('');
+  const practiceLesson = $('practice-this-lesson');
+  if (practiceLesson) practiceLesson.addEventListener('click', () => {
+    practiceSource = 'lesson';
+    location.hash = '#view=practice';
+  });
   renderAudio(metadata);
 }
 

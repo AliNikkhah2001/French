@@ -598,6 +598,11 @@ html[data-theme="dark"] .epub-section { color: var(--ink); }
 .practice-stat small { display: block; color: var(--muted); font-size: .66rem; text-transform: uppercase; letter-spacing: .07em; }
 .practice-stat b { display: block; margin-top: 3px; font: 500 1.4rem/1 Georgia, serif; color: var(--blue); }
 .practice-actions { display: flex; gap: 9px; margin-top: 16px; flex: 0 0 100%; }
+.practice-source { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-top: 18px; padding: 12px 14px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--glass-strong); }
+.practice-source .word-filter:disabled { opacity: .45; cursor: not-allowed; }
+.practice-source-hint { color: var(--muted); font-size: .74rem; flex: 1 1 100%; }
+.pdf-text { background: var(--paper); }
+.reader-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
 .practice-modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 20px; }
 .practice-mode { display: flex; align-items: center; gap: 11px; border: 1px solid var(--hairline); border-radius: 14px; padding: 13px 14px; background: var(--paper); color: var(--ink); text-align: left; cursor: pointer; box-shadow: var(--soft-shadow); transition: border-color .18s ease, box-shadow .18s ease; }
 .practice-mode:hover { border-color: var(--blue-2); }
