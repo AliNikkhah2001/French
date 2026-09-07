@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">3530</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">e7823ae3-c14a-43a9-85a4-9e3a4fd98889</dc:identifier>
+        <dc:title>Actuelles III. Chroniques algériennes, 1939-1958</dc:title>
+        <dc:creator opf:file-as="Camus, Albert" opf:role="aut">Albert Camus</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (0.7.43) [http://calibre-ebook.com]</dc:contributor>
+        <dc:date>2011-02-04T17:28:06.879000+00:00</dc:date>
+        <dc:language>en</dc:language>
+        <meta content="2011-02-04T17:28:02.089000+00:00" name="calibre:timestamp"/>
+        <meta content="ACTUELLES III. Chroniques algériennes, 1939-1958" name="calibre:title_sort"/>
+    </metadata>
+    <guide>
+        <reference href="cover.jpg" type="cover" title="Cover"/>
+    </guide>
+</package>

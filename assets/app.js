@@ -30,6 +30,15 @@ const $ = id => document.getElementById(id);
 const titleCase = value => String(value || '').replace(/\b\w/g, letter => letter.toUpperCase());
 const normalize = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const percent = (value, total) => total ? Math.min(100, Math.round(value / total * 100)) : 0;
+const shuffle = array => {
+  const copy = [...array];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const pick = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[pick]] = [copy[pick], copy[index]];
+  }
+  return copy;
+};
+const encodePath = value => value.split('/').map(encodeURIComponent).join('/');
 
 // Robust base for GitHub Pages project sites (e.g. /French/) and local dev
 const SITE_BASE = new URL('..', import.meta.url);
@@ -54,13 +63,16 @@ function readRoute() {
   if (raw === 'dashboard') return { view: 'dashboard', slug: null, tab: null };
   if (raw === 'wordlist') return { view: 'wordlist', slug: null, tab: null };
   if (raw === 'review') return { view: 'review', slug: null, tab: null };
+  if (raw === 'library') return { view: 'library', slug: null, tab: null };
+  if (raw === 'practice') return { view: 'practice', slug: null, tab: null };
   const params = new URLSearchParams(raw);
   return {
     view: params.get('view') || 'lesson',
     slug: params.get('lesson'),
     tab: params.get('tab'),
     wordlistFilter: params.get('wl'),
-    reviewFilter: params.get('rv')
+    reviewFilter: params.get('rv'),
+    file: params.get('file')
   };
 }
 
@@ -146,12 +158,19 @@ async function loadManifest() {
     const analyticsResponse = await siteFetch(analyticsPath);
     if (!analyticsResponse.ok) throw new Error(`Analytics returned ${analyticsResponse.status} at ${analyticsResponse.url}.`);
     state.analytics = await analyticsResponse.json();
+    try {
+      const libraryResponse = await siteFetch('content/library.json');
+      if (libraryResponse.ok) state.library = await libraryResponse.json();
+    } catch { /* library optional */ }
     renderTypeFilters();
     renderLibrary();
     const route = readRoute();
     if (route.view === 'dashboard') showDashboard();
     else if (route.view === 'wordlist') showWordList();
     else if (route.view === 'review') showReview();
+    else if (route.view === 'library') showLibrary();
+    else if (route.view === 'reader' && route.file) showReader(route.file);
+    else if (route.view === 'practice') showPractice();
     else if (route.view === 'home') showHome();
     else {
       const selected = state.manifest.lessons.find(item => item.slug === route.slug) || state.manifest.lessons[0];
@@ -168,6 +187,9 @@ function showLoading() {
   $('error-state').hidden = true;
   $('lesson-view').hidden = true;
   $('home-view').hidden = true;
+  $('library-view').hidden = true;
+  $('reader-view').hidden = true;
+  $('practice-view').hidden = true;
   $('dashboard-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
@@ -179,6 +201,9 @@ function showError(message) {
   $('loading-state').hidden = true;
   $('lesson-view').hidden = true;
   $('home-view').hidden = true;
+  $('library-view').hidden = true;
+  $('reader-view').hidden = true;
+  $('practice-view').hidden = true;
   $('dashboard-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
@@ -191,6 +216,9 @@ function showLesson() {
   $('error-state').hidden = true;
   $('dashboard-view').hidden = true;
   $('home-view').hidden = true;
+  $('library-view').hidden = true;
+  $('reader-view').hidden = true;
+  $('practice-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
   $('lesson-view').hidden = false;
@@ -239,7 +267,7 @@ function renderLibrary() {
 
 /* ------------------- Home (history summary) ------------------- */
 
-const HOME_EMBLEM = '<svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="home-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2a63a0"/><stop offset="100%" stop-color="#1a4a80"/></linearGradient></defs><rect width="64" height="64" rx="18" fill="url(#home-bg)"/><path d="M14 34 16.77 26.3 19.54 22.96 22.31 20.81 25.08 19.37 27.85 18.48 30.62 18.05 33.38 18.05 36.15 18.48 38.92 19.37 41.69 20.81 44.46 22.96 47.23 26.3 50 34 50 34 47.23 31.78 44.46 30.09 41.69 28.83 38.92 27.92 36.15 27.33 33.38 27.04 30.62 27.04 27.85 27.33 25.08 27.92 22.31 28.83 19.54 30.09 16.77 31.78 14 34 Z" fill="#f5eddc"/><path d="M14 34 16.77 29.32 19.54 26.5 22.31 24.58 25.08 23.27 27.85 22.45 30.62 22.05 33.38 22.05 36.15 22.45 38.92 23.27 41.69 24.58 44.46 26.5 47.23 29.32 50 34" fill="none" stroke="#c79a5b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 34 16.77 30.45 19.54 28.05 22.31 26.35 25.08 25.16 27.85 24.41 30.62 24.05 33.38 24.05 36.15 24.41 38.92 25.16 41.69 26.35 44.46 28.05 47.23 30.45 50 34" fill="none" stroke="#c79a5b" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const HOME_EMBLEM = '🥐';
 
 function lessonProgress(item) {
   const progress = getProgress(item.slug);
@@ -340,6 +368,9 @@ function showHome() {
   $('error-state').hidden = true;
   $('lesson-view').hidden = true;
   $('dashboard-view').hidden = true;
+  $('library-view').hidden = true;
+  $('reader-view').hidden = true;
+  $('practice-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
   $('home-view').hidden = false;
@@ -351,6 +382,380 @@ function showHome() {
   document.title = 'Le Petit Atelier Français';
   renderHome();
   renderLibrary();
+}
+
+/* ------------------- Library ------------------- */
+
+function documentUrl(path) {
+  return new URL(encodePath(path), SITE_BASE).href;
+}
+
+function hideAllMainViews() {
+  $('loading-state').hidden = true;
+  $('error-state').hidden = true;
+  $('lesson-view').hidden = true;
+  $('home-view').hidden = true;
+  $('library-view').hidden = true;
+  $('reader-view').hidden = true;
+  $('practice-view').hidden = true;
+  $('dashboard-view').hidden = true;
+  $('wordlist-view').hidden = true;
+  $('review-view').hidden = true;
+}
+
+function clearNavActive() {
+  document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+  $('dashboard-button')?.classList.remove('active');
+}
+
+function showLibrary() {
+  if (!state.library) { showError('Library not found. Run “npm run build”.'); return; }
+  hideAllMainViews();
+  $('library-view').hidden = false;
+  document.documentElement.classList.remove('view-home');
+  clearNavActive();
+  $('library-button')?.classList.add('active');
+  closeMobileLibrary();
+  state.view = 'library';
+  document.title = 'Bibliothèque · Le Petit Atelier Français';
+  renderLibraryView();
+  renderLibrary();
+}
+
+function renderLibraryView() {
+  const collections = state.library.collections || [];
+  const totalDocs = collections.reduce((sum, collection) => sum + collection.items.filter(item => item.kind !== 'lesson').length, 0);
+  const html = collections.map(collection => {
+    const lessonItems = collection.items.filter(item => item.kind === 'lesson');
+    const docs = collection.items.filter(item => item.kind !== 'lesson');
+    const sections = new Map();
+    docs.forEach(doc => { if (!sections.has(doc.section)) sections.set(doc.section, []); sections.get(doc.section).push(doc); });
+    const docBlocks = [...sections.entries()].map(([section, items]) => `
+      <h4 class="library-section">${escapeHtml(section)} <span>${items.length}</span></h4>
+      <div class="library-docs">${items.map(doc => libraryDocCard(doc)).join('')}</div>`).join('');
+    return `<section class="library-collection">
+      <div class="library-col-head"><span class="library-emoji">${escapeHtml(collection.emoji)}</span><div><h3>${escapeHtml(collection.label)}</h3><p>${escapeHtml(collection.blurb)}</p></div><span class="mini-stat">${collection.items.length}</span></div>
+      ${lessonItems.length ? `<div class="library-lessons">${lessonItems.map(item => libraryLessonCard(item)).join('')}</div>` : ''}
+      ${docBlocks}
+    </section>`;
+  }).join('') || '<div class="empty-section">No library content yet.</div>';
+  $('library-view').innerHTML = `
+    <header class="wordlist-hero">
+      <div>
+        <span class="kicker">La bibliothèque</span>
+        <h2>Your French bookshelf</h2>
+        <p>Songs, podcasts, books and grammar guides — lessons to study and PDFs to read and mark.</p>
+      </div>
+      <div class="wordlist-stats"><div class="wordlist-stat"><small>Collections</small><b>${collections.length}</b></div><div class="wordlist-stat"><small>Lessons</small><b>${state.manifest.lessons.length}</b></div><div class="wordlist-stat"><small>Readings & PDFs</small><b>${totalDocs}</b></div></div>
+    </header>
+    <div class="library-list">${html}</div>`;
+  $('library-view').querySelectorAll('[data-open-lesson]').forEach(button => button.addEventListener('click', async () => {
+    const item = state.manifest.lessons.find(lesson => lesson.slug === button.dataset.openLesson);
+    if (item) await loadLesson(item);
+  }));
+  libraryBind();
+}
+
+function libraryLessonCard(item) {
+  const detail = [titleCase(item.type), item.level, item.duration].filter(Boolean).join(' · ');
+  const progress = lessonProgress(item);
+  return `<button class="library-item" type="button" data-open-lesson="${escapeHtml(item.slug)}"><span class="library-item-emoji">${escapeHtml(item.emoji)}</span><span><b>${escapeHtml(item.title)}</b><small>${escapeHtml(detail)}${item.has_audio ? ' · 🔊' : ''}</small>${progress > 0 ? `<span class="card-progress"><i style="width:${progress}%"></i></span>` : ''}</span><span class="lesson-arrow">›</span></button>`;
+}
+
+function libraryDocCard(doc) {
+  const badge = doc.kind === 'pdf' ? '<span class="doc-badge pdf">PDF</span>' : '<span class="doc-badge epub">EPUB</span>';
+  const url = documentUrl(doc.path);
+  if (doc.kind === 'pdf') {
+    return `<button class="library-item" type="button" data-open-pdf="${escapeHtml(doc.path)}"><span class="library-item-emoji">📕</span><span><b>${escapeHtml(doc.title)}</b><small>${badge}<span>Read, bookmark &amp; take notes</span></small></span><span class="lesson-arrow">›</span></button>`;
+  }
+  return `<a class="library-item" href="${url}" target="_blank" rel="noopener" download><span class="library-item-emoji">📘</span><span><b>${escapeHtml(doc.title)}</b><small>${badge}<span>Download to read</span></small></span><span class="lesson-arrow">↧</span></a>`;
+}
+
+function libraryBind() {
+  $('library-view').querySelectorAll('[data-open-pdf]').forEach(button => button.addEventListener('click', () => {
+    location.hash = `view=reader&file=${encodeURIComponent(button.dataset.openPdf)}`;
+  }));
+}
+
+/* ------------------- PDF reader ------------------- */
+
+const pdfMemoryPrefix = 'atelier-pdf:';
+let pdfWorkerReady = false;
+if (window.pdfjsLib) {
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('../vendor/pdfjs/pdf.worker.min.js', import.meta.url).href;
+  pdfWorkerReady = true;
+}
+state.pdfDoc = null;
+state.pdfPage = 1;
+state.pdfZoom = 1;
+state.pdfFitted = false;
+state.pdfMemory = { page: 1, zoom: 0, bookmarks: [], note: '' };
+
+function pdfMemoryKey(file) { return `${pdfMemoryPrefix}${file}`; }
+
+function loadPdfMemory(file) {
+  try { state.pdfMemory = { page: 1, zoom: 0, bookmarks: [], note: '', ...(JSON.parse(localStorage.getItem(pdfMemoryKey(file))) || {}) }; }
+  catch { state.pdfMemory = { page: 1, zoom: 0, bookmarks: [], note: '' }; }
+  state.pdfFitted = state.pdfMemory.zoom > 0;
+}
+
+function savePdfMemory(file) {
+  localStorage.setItem(pdfMemoryKey(file), JSON.stringify(state.pdfMemory));
+}
+
+function showReader(file) {
+  hideAllMainViews();
+  $('reader-view').hidden = false;
+  document.documentElement.classList.remove('view-home');
+  clearNavActive();
+  closeMobileLibrary();
+  state.view = 'reader';
+  state.pdfFile = file || '';
+  state.pdfDoc = null;
+  state.pdfPage = 1;
+  loadPdfMemory(state.pdfFile);
+  const title = decodeURIComponent(state.pdfFile.split('/').pop() || '');
+  $('reader-view').innerHTML = `
+    <div class="reader-shell">
+      <header class="reader-bar">
+        <button class="reader-back" id="reader-back" type="button">← Bibliothèque</button>
+        <strong class="reader-title" id="reader-title">${escapeHtml(title)}</strong>
+        <div class="reader-controls">
+          <button class="reader-btn" data-pdf="prev" type="button" aria-label="Previous page">‹</button>
+          <input id="reader-page" type="number" min="1" value="1" aria-label="Page number">
+          <span class="reader-count" id="reader-count">/ 1</span>
+          <button class="reader-btn" data-pdf="next" type="button" aria-label="Next page">›</button>
+          <button class="reader-btn" data-pdf="zoomout" type="button" aria-label="Zoom out">−</button>
+          <button class="reader-btn" data-pdf="zoomin" type="button" aria-label="Zoom in">+</button>
+          <button class="reader-btn bookmark" id="reader-bookmark" type="button">☆ Read</button>
+        </div>
+      </header>
+      <div class="reader-body" id="reader-body"><div class="reader-loading">Opening the book… 🥐</div></div>
+      <footer class="reader-footer">
+        <div class="reader-progress"><i id="reader-progress" style="width:0%"></i></div>
+        <textarea id="reader-note" placeholder="Vos notes sur cette lecture… (saved on this device)"></textarea>
+        <button class="reader-reset" id="reader-reset" type="button">Reset position</button>
+      </footer>
+    </div>`;
+  document.title = `${title} · Le Petit Atelier Français`;
+  $('reader-back').addEventListener('click', () => { location.hash = '#view=library'; });
+  $('reader-note').value = state.pdfMemory.note || '';
+  $('reader-note').addEventListener('input', event => { state.pdfMemory.note = event.target.value; savePdfMemory(state.pdfFile); });
+  $('reader-note').addEventListener('blur', () => { if (state.pdfMemory.note && state.pdfMemory.note.trim()) recordActivity('reading'); });
+  $('reader-reset').addEventListener('click', () => { state.pdfMemory = { page: 1, zoom: 0, bookmarks: [], note: $('reader-note').value || '' }; state.pdfFitted = false; savePdfMemory(state.pdfFile); goToPage(1); });
+  $('reader-page').addEventListener('change', event => { const page = Math.max(1, Math.min(state.pdfDoc?.numPages || 1, Number(event.target.value) || 1)); goToPage(page); });
+  $('reader-bookmark').addEventListener('click', toggleBookmark);
+  $('reader-view').querySelectorAll('[data-pdf]').forEach(button => button.addEventListener('click', () => {
+    const action = button.dataset.pdf;
+    if (action === 'prev') goToPage(state.pdfPage - 1);
+    else if (action === 'next') goToPage(state.pdfPage + 1);
+    else if (action === 'zoomin') setZoom(state.pdfZoom * 1.18);
+    else if (action === 'zoomout') setZoom(state.pdfZoom / 1.18);
+  }));
+  if (!pdfWorkerReady) { $('reader-body').innerHTML = '<div class="reader-loading">PDF reader library is unavailable.</div>'; return; }
+  loadPdfDocument();
+}
+
+async function loadPdfDocument() {
+  try {
+    const loadingTask = window.pdfjsLib.getDocument({ url: documentUrl(state.pdfFile) });
+    state.pdfDoc = await loadingTask.promise;
+    $('reader-count').textContent = `/ ${state.pdfDoc.numPages}`;
+    state.pdfPage = Math.min(state.pdfDoc.numPages, state.pdfMemory.page || 1);
+    state.pdfZoom = Math.max(0.5, state.pdfMemory.zoom || 1);
+    $('reader-page').max = state.pdfDoc.numPages;
+    await goToPage(state.pdfPage);
+  } catch (error) {
+    console.error(error);
+    $('reader-body').innerHTML = `<div class="reader-loading">Could not open this PDF.<br><small>${escapeHtml(error.message || '')}</small></div>`;
+  }
+}
+
+async function goToPage(page) {
+  if (!state.pdfDoc) return;
+  const target = Math.max(1, Math.min(state.pdfDoc.numPages, Math.round(Number(page)) || 1));
+  if (state._renderTask) { try { state._renderTask.cancel(); } catch { /* ignore */ } }
+  state._renderTask = null;
+  let pageObj;
+  try { pageObj = await state.pdfDoc.getPage(target); } catch { return; }
+  const baseViewport = pageObj.getViewport({ scale: 1 });
+  if (!state.pdfFitted) {
+    const body = $('reader-body');
+    const availableWidth = Math.max(240, body.clientWidth - 20);
+    state.pdfZoom = Math.min(1, availableWidth / baseViewport.width);
+    state.pdfFitted = true;
+    state.pdfMemory.zoom = state.pdfZoom;
+  }
+  const viewport = pageObj.getViewport({ scale: state.pdfZoom });
+  const canvas = document.createElement('canvas');
+  canvas.className = 'reader-canvas';
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+  $('reader-body').replaceChildren(canvas);
+  const renderTask = pageObj.render({ canvasContext: canvas.getContext('2d'), viewport });
+  state._renderTask = renderTask;
+  try { await renderTask.promise; } catch { /* cancelled */ }
+  state.pdfPage = target;
+  $('reader-page').value = target;
+  $('reader-count').textContent = `/ ${state.pdfDoc.numPages}`;
+  $('reader-progress').style.width = `${percent(target, state.pdfDoc.numPages)}%`;
+  updateBookmarkButton();
+  savePdfMemory(state.pdfFile);
+}
+
+function setZoom(nextZoom) {
+  state.pdfZoom = Math.max(0.5, Math.min(3, nextZoom));
+  state.pdfMemory.zoom = state.pdfZoom;
+  goToPage(state.pdfPage);
+}
+
+function updateBookmarkButton() {
+  const btn = $('reader-bookmark');
+  if (!btn) return;
+  const bookmarked = (state.pdfMemory.bookmarks || []).includes(state.pdfPage);
+  btn.textContent = bookmarked ? '★ Read' : '☆ Read';
+  btn.classList.toggle('active', bookmarked);
+}
+
+function toggleBookmark() {
+  const bookmarks = state.pdfMemory.bookmarks || [];
+  const index = bookmarks.indexOf(state.pdfPage);
+  if (index >= 0) bookmarks.splice(index, 1);
+  else bookmarks.push(state.pdfPage);
+  bookmarks.sort((a, b) => a - b);
+  state.pdfMemory.bookmarks = bookmarks;
+  savePdfMemory(state.pdfFile);
+  updateBookmarkButton();
+  recordActivity('reading');
+}
+
+/* ------------------- Practice (grammar & vocabulary) ------------------- */
+
+let practiceQuestions = [];
+let practiceIndex = 0;
+
+function practicePool() {
+  const words = getWordList();
+  if (words.length >= 6) {
+    return words.map(word => ({ french: word.french, english: word.english || '', type: word.type || 'vocab' }));
+  }
+  const fromAnalytics = state.analytics?.entities?.vocabulary || [];
+  return shuffle(fromAnalytics.map(entity => ({ french: entity.french, english: entity.english, type: entity.type }))).slice(0, 40);
+}
+
+function makePracticeQuestions() {
+  const pool = practicePool();
+  if (!pool.length) return [];
+  const questions = [];
+  const correct = shuffle(pool.slice()).slice(0, 8);
+  correct.forEach(word => {
+    const distractors = shuffle(pool.filter(other => normalizeFrench(other.french) !== normalizeFrench(word.french) && normalize(other.english) !== normalize(word.english))).slice(0, 3);
+    const options = shuffle([{ text: word.english, correct: true }, ...distractors.map(d => ({ text: d.english, correct: false }))]).slice(0, 4);
+    questions.push({ type: 'mc', question: `What does “${escapeHtml(word.french)}” mean?`, options, answer: word.english });
+    questions.push({ type: 'typing', question: `Type the French for “${escapeHtml(word.english)}”:`, answer: word.french, hint: word.type });
+  });
+  const lines = (state.lesson?.transcript || []).map(line => (line.french || '').replace(/<[^>]+>/g, '').trim().replace(/[«»“”]/g, ''))
+    .filter(line => { const words = line.split(/\s+/); return words.length >= 4 && words.length <= 8; });
+  if (lines.length) questions.push({ type: 'order', question: 'Arrange these words into a French sentence:', answer: shuffle(lines)[0].split(/\s+/).slice(0, 8).join(' ') });
+  return shuffle(questions.filter(q => q.answer)).slice(0, 10);
+}
+
+function showPractice() {
+  hideAllMainViews();
+  $('practice-view').hidden = false;
+  document.documentElement.classList.remove('view-home');
+  clearNavActive();
+  closeMobileLibrary();
+  state.view = 'practice';
+  document.title = 'Practice · Le Petit Atelier Français';
+  renderPractice();
+}
+
+function renderPractice() {
+  const poolSize = practicePool().length;
+  $('practice-view').innerHTML = `
+    <header class="dashboard-hero">
+      <div><span class="kicker">Entraînement</span><h2>Practice what you know.</h2>
+      <p>Auto-generated from <b>${poolSize}</b> words in your list and the transcript — multiple choice, typing and word order, every round.</p></div>
+      <div class="dashboard-actions"><button class="button blue" id="practice-start" type="button">▶ New round</button></div>
+    </header>
+    <div class="practice-stage" id="practice-stage"></div>`;
+  $('practice-start').addEventListener('click', startPractice);
+}
+
+async function startPractice() {
+  if (!state.lesson?.transcript?.length && state.manifest?.lessons?.[0]) {
+    try {
+      const response = await siteFetch(state.manifest.lessons[0].path);
+      if (response.ok) state.lesson = parseLesson(await response.text());
+    } catch { /* keep whatever lesson is loaded */ }
+  }
+  practiceQuestions = makePracticeQuestions();
+  practiceIndex = 0;
+  if (!practiceQuestions.length) {
+    $('practice-stage').innerHTML = '<div class="empty-section">Add some words to your list first, or mark lesson vocabulary learned.</div>';
+    return;
+  }
+  renderPracticeQuestion();
+}
+
+function renderPracticeQuestion() {
+  const question = practiceQuestions[practiceIndex];
+  const count = practiceQuestions.length;
+  let body = '';
+  if (question.type === 'mc') {
+    body = `<div class="quiz-form">${question.options.map((option, index) => `<label class="answer-label"><input type="radio" name="practicemc" value="${index}"><span>${inlineMarkdown(option.text)}</span></label>`).join('')}</div>`;
+  } else if (question.type === 'typing') {
+    body = '<label class="answer-label fill"><span>✍ Type your answer:</span><input class="fill-input" type="text" autocomplete="off" spellcheck="false" aria-label="Your answer"></label>';
+  } else {
+    body = '<div class="order-area"><div class="order-src" id="practice-src"></div><ol class="order-target" id="practice-target"></ol></div>';
+  }
+  $('practice-stage').innerHTML = `
+    <div class="quiz-question practice-question">
+      <div class="quiz-prompt">${practiceIndex + 1}. ${inlineMarkdown(question.question || '')}</div>
+      ${body}
+      <p class="question-feedback practice-feedback" hidden></p>
+    </div>
+    <div class="quiz-footer"><button class="button blue" id="practice-check" type="button">Check</button><button class="button paper" id="practice-skip" type="button">Skip</button><span class="quiz-score">${practiceIndex + 1} / ${count}</span></div>`;
+  if (question.type === 'order') {
+    const expected = question.answer.split(/\s+/).slice(0, 8);
+    const source = shuffle(expected);
+    const src = $('practice-src');
+    source.forEach(word => { const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'order-chip'; chip.textContent = word; chip.addEventListener('click', () => { chip.remove(); const item = document.createElement('li'); item.className = 'order-chip'; item.textContent = word; item.addEventListener('click', () => { item.remove(); src.appendChild(chip); }); $('practice-target').appendChild(item); }); src.appendChild(chip); });
+  }
+  $('practice-check').addEventListener('click', checkPractice);
+  $('practice-skip').addEventListener('click', () => { practiceIndex += 1; if (practiceIndex >= practiceQuestions.length) finishPractice(); else renderPracticeQuestion(); });
+}
+
+function checkPractice() {
+  const question = practiceQuestions[practiceIndex];
+  const field = $('practice-stage').querySelector('.practice-question');
+  let isCorrect = false;
+  if (question.type === 'mc') {
+    const selected = field.querySelector('input:checked');
+    if (selected) isCorrect = question.options[Number(selected.value)].correct;
+  } else if (question.type === 'typing') {
+    const value = field.querySelector('.fill-input')?.value || '';
+    isCorrect = normalize(value) === normalize(question.answer);
+  } else {
+    const words = [...$('practice-target').querySelectorAll('.order-chip')].map(node => node.textContent.trim());
+    isCorrect = normalize(words.join(' ')) === normalize(question.answer);
+  }
+  field.classList.add(isCorrect ? 'correct' : 'incorrect');
+  const feedback = field.querySelector('.question-feedback');
+  feedback.hidden = false;
+  feedback.innerHTML = isCorrect ? '✓ Correct.' : `The answer: <b>${inlineMarkdown(escapeHtml(question.answer))}</b>`;
+  if (isCorrect) recordActivity('practice');
+  const check = $('practice-check');
+  check.innerHTML = isCorrect ? 'Next →' : 'Continue →';
+  check.onclick = () => { practiceIndex += 1; if (practiceIndex >= practiceQuestions.length) finishPractice(); else renderPracticeQuestion(); };
+}
+
+function finishPractice() {
+  const total = practiceQuestions.length;
+  const attempted = total;
+  $('practice-stage').innerHTML = `<div class="practice-done"><span>🎉</span><b>Round finished!</b><p>Keep practicing — repetition builds memory.</p><button class="button blue" id="practice-round" type="button">Another round</button></div>`;
+  $('practice-round').addEventListener('click', startPractice);
 }
 
 async function loadLesson(item, requestedTab = null) {
@@ -586,26 +991,89 @@ function renderExam() {
   const lesson = state.lesson;
   const progress = getProgress();
   const guide = lesson.examGuide ? `<div class="rich-copy">${lesson.examGuide}</div>` : '';
-  const quiz = lesson.exam.length ? `<form class="quiz-form" id="quiz-form">${lesson.exam.map((question, index) => quizQuestion(question, index)).join('')}</form><div class="quiz-footer"><button class="button blue" id="check-quiz" type="button">Check my answers</button><button class="button paper" id="clear-quiz" type="button">Clear</button><span class="quiz-score" id="quiz-score">${progress.quizAttempted ? `Last score: ${progress.quizScore}/${lesson.exam.length}` : ''}</span></div>` : '';
+  const quiz = lesson.exam.length ? `<form class="quiz-form" id="quiz-form">${lesson.exam.map((question, index) => quizField(question, index)).join('')}</form><div class="quiz-footer"><button class="button blue" id="check-quiz" type="button">Check my answers</button><button class="button paper" id="clear-quiz" type="button">Clear</button><span class="quiz-score" id="quiz-score">${progress.quizAttempted ? `Last score: ${progress.quizScore}/${lesson.exam.length}` : ''}</span></div>` : '';
   $('tab-panel').innerHTML = `${sectionHeading('Mode examen', 'Exam practice', 'Use the lesson first. Then answer from memory without opening another tab.', lesson.exam.length ? `${lesson.exam.length} questions` : '')}${guide}${quiz}`;
-  if (lesson.exam.length) { $('check-quiz').addEventListener('click', checkQuiz); $('clear-quiz').addEventListener('click', renderExam); }
+  if (lesson.exam.length) {
+    $('check-quiz').addEventListener('click', checkQuiz);
+    $('clear-quiz').addEventListener('click', renderExam);
+    lesson.exam.forEach((question, index) => { if (question.type === 'order') mountOrder(index); });
+  }
 }
 
-function quizQuestion(question, index) {
-  const options = ['a', 'b', 'c', 'd'];
-  return `<fieldset class="quiz-question" data-question="${index}" data-answer="${escapeHtml((question.answer || '').toUpperCase())}"><legend>${index + 1}. ${inlineMarkdown(question.question || '')}</legend>${options.map(letter => `<label class="answer-label"><input type="radio" name="question-${index}" value="${letter.toUpperCase()}"><span><b>${letter.toUpperCase()}.</b> ${inlineMarkdown(question[letter] || '')}</span></label>`).join('')}<p class="question-feedback" hidden></p></fieldset>`;
+function quizField(question, index) {
+  const legend = `${index + 1}. ${inlineMarkdown(question.question || '')}`;
+  let body = '';
+  if (question.type === 'mc') {
+    body = question.options.map(option => `<label class="answer-label"><input type="radio" name="question-${index}" value="${option.key}"><span><b>${option.key}.</b> ${inlineMarkdown(option.text || '')}</span></label>`).join('');
+  } else if (question.type === 'fill') {
+    body = `<label class="answer-label fill"><span>✍ Type your answer:</span><input class="fill-input" type="text" autocomplete="off" spellcheck="false" aria-label="Your answer"></label>`;
+  } else if (question.type === 'order') {
+    body = `<div class="order-area"><div class="order-src" aria-label="Word bank"></div><ol class="order-target" aria-label="Your word order"></ol></div>`;
+  } else {
+    body = `<label class="answer-label write"><span>✍ Écrivez votre réponse:</span><textarea class="write-input" rows="2" aria-label="Your answer"></textarea></label>`;
+  }
+  return `<fieldset class="quiz-question" data-question="${index}" data-qtype="${question.type}" data-answer="${escapeHtml(question.answer || '')}"><legend>${legend}</legend>${body}<p class="question-feedback" hidden></p></fieldset>`;
+}
+
+function mountOrder(index) {
+  const field = document.querySelector(`.quiz-question[data-question="${index}"]`);
+  if (!field) return;
+  const source = field.querySelector('.order-src');
+  const target = field.querySelector('.order-target');
+  const expected = (field.dataset.answer || '').trim().split(/\s+/).filter(Boolean);
+  const sourceWords = shuffle(expected.slice());
+  sourceWords.forEach(word => {
+    const chip = document.createElement('button');
+    chip.type = 'button'; chip.className = 'order-chip'; chip.textContent = word;
+    chip.addEventListener('click', () => {
+      if (!chip.isConnected) return;
+      chip.remove();
+      const item = document.createElement('li');
+      item.className = 'order-chip';
+      item.textContent = word;
+      item.addEventListener('click', () => { item.remove(); sourceWord(word); });
+      target.appendChild(item);
+    });
+    source.appendChild(chip);
+  });
+  function sourceWord(word) {
+    const chip = document.createElement('button');
+    chip.type = 'button'; chip.className = 'order-chip'; chip.textContent = word;
+    chip.addEventListener('click', () => {
+      chip.remove();
+      const item = document.createElement('li');
+      item.className = 'order-chip'; item.textContent = word;
+      item.addEventListener('click', () => { item.remove(); sourceWord(word); });
+      target.appendChild(item);
+    });
+    source.appendChild(chip);
+  }
+}
+
+function gradeAnswer(question, element) {
+  if (question.type === 'mc') {
+    const selected = element.querySelector('input:checked')?.value;
+    return selected === question.answer.toUpperCase();
+  }
+  if (question.type === 'order') {
+    const words = [...element.querySelectorAll('.order-target .order-chip')].map(node => node.textContent.trim()).join(' ');
+    return normalize(words) === normalize(question.answer);
+  }
+  const value = element.querySelector('.fill-input, .write-input')?.value || '';
+  return normalize(value) === normalize(question.answer);
 }
 
 function checkQuiz() {
   let score = 0;
-  $('tab-panel').querySelectorAll('.quiz-question').forEach((element, index) => {
-    const selected = element.querySelector('input:checked')?.value;
-    const correct = element.dataset.answer;
-    const isCorrect = selected === correct;
+  document.querySelectorAll('.quiz-question').forEach((element, index) => {
+    const question = state.lesson.exam[index];
+    const correct = question.answer;
+    const isCorrect = gradeAnswer(question, element);
     element.classList.remove('correct', 'incorrect'); element.classList.add(isCorrect ? 'correct' : 'incorrect');
     if (isCorrect) score += 1;
     const feedback = element.querySelector('.question-feedback'); feedback.hidden = false;
-    feedback.innerHTML = `${isCorrect ? '✓ Correct.' : `Not quite. The answer is ${escapeHtml(correct)}.`} ${inlineMarkdown(state.lesson.exam[index].explanation || '')}`;
+    const shownAnswer = question.type === 'mc' ? escapeHtml(correct.toUpperCase()) : `<b>${inlineMarkdown(escapeHtml(correct))}</b>`;
+    feedback.innerHTML = `${isCorrect ? '✓ Correct.' : `Not quite. The answer is ${shownAnswer}.`} ${inlineMarkdown(question.explanation || '')}`;
   });
   const progress = getProgress(); progress.quizAttempted = true; progress.quizScore = score;
   recordActivity('exam'); setProgress(progress); $('quiz-score').textContent = `Score: ${score}/${state.lesson.exam.length}`;
@@ -682,7 +1150,8 @@ function countDistribution(values) {
 function showDashboard() {
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = false;
-  $('home-view').hidden = true; $('wordlist-view').hidden = true; $('review-view').hidden = true;
+  $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true;
+  $('wordlist-view').hidden = true; $('review-view').hidden = true;
   document.documentElement.classList.remove('view-home');
   $('dashboard-button').classList.add('active'); closeMobileLibrary(); renderDashboard(); renderLibrary();
   document.title = 'Learning dashboard · Le Petit Atelier Français';
@@ -736,7 +1205,8 @@ function recordReview(word, quality) {
 function showWordList() {
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = true;
-  $('home-view').hidden = true; $('wordlist-view').hidden = false; $('review-view').hidden = true;
+  $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true;
+  $('wordlist-view').hidden = false; $('review-view').hidden = true;
   document.documentElement.classList.remove('view-home');
   document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
   $('wordlist-button').classList.add('active');
@@ -778,6 +1248,7 @@ function renderWordList() {
         <button class="button blue" type="submit" style="grid-column:1/-1;justify-self:stretch;">+ Add word</button>
       </form>
       <div class="review-tabs">${filterChip('all', 'All')} ${filterChip('fresh', 'New')} ${filterChip('due', 'Due')} ${filterChip('soon', 'Soon')} ${filterChip('later', 'Mastered')}</div>
+      <a class="button paper practice-entry" href="#view=practice">🎲 Practice these words</a>
     </header>
     <details class="add-note" style="margin-top:18px;background:var(--cream);">
       <summary style="cursor:pointer;font-weight:800;color:var(--ink);">📥 Bulk import (paste lines like <em>chat — cat — noun</em>)</summary>
@@ -935,7 +1406,8 @@ function reviewQueue(filter = state.reviewFilter) {
 function showReview() {
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = true;
-  $('home-view').hidden = true; $('wordlist-view').hidden = true; $('review-view').hidden = false;
+  $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true;
+  $('wordlist-view').hidden = true; $('review-view').hidden = false;
   document.documentElement.classList.remove('view-home');
   document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
   $('review-button').classList.add('active');
@@ -969,7 +1441,8 @@ function renderReview() {
         <h2>Review due words</h2>
         <p>Spaced repetition picks the next card based on how well you remembered it last time. Speak the word aloud, then reveal the meaning.</p>
       </div>
-      <div class="review-tabs">${filterChip('due', 'Due now')} ${filterChip('fresh', 'New')} ${filterChip('soon', 'Soon')} ${filterChip('later', 'Mastered')} ${filterChip('all', 'All')}</div>
+      <div class="review-actions"><a class="button paper practice-entry" href="#view=practice">🎲 Practice your vocabulary</a>
+      <div class="review-tabs">${filterChip('due', 'Due now')} ${filterChip('fresh', 'New')} ${filterChip('soon', 'Soon')} ${filterChip('later', 'Mastered')} ${filterChip('all', 'All')}</div></div>
     </header>
     <div class="review-stage">
       <div class="review-card-content">
@@ -1272,6 +1745,7 @@ $('mobile-library-button').addEventListener('click', () => { const open = $('lib
 $('dashboard-button').addEventListener('click', () => { location.hash = 'view=dashboard'; });
 $('wordlist-button').addEventListener('click', () => { location.hash = 'view=wordlist'; });
 $('review-button').addEventListener('click', () => { location.hash = 'view=review'; });
+$('library-button')?.addEventListener('click', () => { location.hash = 'view=library'; });
 $('theme-button').addEventListener('click', () => { const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; localStorage.setItem('atelier-theme', next); $('theme-button').textContent = next === 'dark' ? '☀' : '☾'; });
 $('reset-lesson').addEventListener('click', () => { localStorage.removeItem(progressKey()); state.cardIndex = 0; state.cardRevealed = false; updateProgress(); renderActiveTab(); });
 $('retry-button').addEventListener('click', loadManifest);
@@ -1281,6 +1755,9 @@ window.addEventListener('hashchange', async () => {
   if (route.view === 'dashboard') { showDashboard(); return; }
   if (route.view === 'wordlist') { showWordList(); return; }
   if (route.view === 'review') { showReview(); return; }
+  if (route.view === 'library') { showLibrary(); return; }
+  if (route.view === 'practice') { showPractice(); return; }
+  if (route.view === 'reader' && route.file) { showReader(route.file); return; }
   if (route.view === 'home') { showHome(); return; }
   if (route.wordlistFilter) state.wordlistFilter = route.wordlistFilter;
   if (route.reviewFilter) state.reviewFilter = route.reviewFilter;
@@ -1347,7 +1824,7 @@ function updateIosTab() {
   const view = readRoute().view;
   document.querySelectorAll('.ios-tab').forEach(btn => {
     const tab = btn.dataset.iosTab;
-    const active = (tab === 'home' && (view === 'home' || view === 'lesson')) || tab === view;
+    const active = (tab === 'home' && (view === 'home' || view === 'lesson')) || tab === view || (tab === 'library' && (view === 'reader' || view === 'practice'));
     btn.classList.toggle('active', active);
   });
 }

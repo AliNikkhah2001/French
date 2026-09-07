@@ -142,15 +142,43 @@ The page provides search and type filters automatically.
 
 ## Exam practice
 
-Answers may be `A`, `B`, `C`, or `D`:
+The exam tab supports four question types. The default is multiple choice; add a `Type` column to use the others. Answers may be `A`, `B`, `C`, or `D` for multiple choice. Fill, word-order and write questions use a plain-text `Answer`.
 
 ```markdown
 # Exam practice
 
-| Question | A | B | C | D | Answer | Explanation |
-|---|---|---|---|---|---|---|
-| What does “au chômage” mean? | at home | unemployed | in power | late | B | It is a fixed expression. |
+| Type | Question | A | B | C | D | Answer | Explanation |
+|---|---|---|---|---|---|---|---|
+| mc | What does “au chômage” mean? | at home | unemployed | in power | late | B | It is a fixed expression. |
 ```
+
+**Multiple choice (default):** leave `Type` empty or use `mc`. `Answer` is `A`, `B`, `C` or `D`.
+
+**Fill the blank (`fill`):** the learner types the word. Keep `Answer` short.
+
+```markdown
+| Type | Question | Answer | Explanation |
+|---|---|---|---|
+| fill | Complétez : « Je ___ à Paris. » | vis | present of vivre |
+```
+
+**Word order (`order`):** the learner arranges words into a sentence. `Answer` is the correct order, space-separated.
+
+```markdown
+| Type | Question | Answer | Explanation |
+|---|---|---|---|
+| order | Mettez les mots dans l’ordre. | Je vis à Paris. | normal word order |
+```
+
+**Write your answer (`write`):** an open short-answer box. `Answer` is the exact accepted text.
+
+```markdown
+| Type | Question | Answer | Explanation |
+|---|---|---|---|
+| write | Écrivez une phrase avec « vis ». | Je vis à Paris. | any correct sentence |
+```
+
+> Matching ignores case and accents, and ignores punctuation for `order`. Keep `explanation` short. If you omit the `Type` column, every row is treated as multiple choice (all seven other columns required).
 
 ## Important notes and custom sections
 

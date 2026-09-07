@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">3512</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">193fd446-e6ed-43ae-9fdb-0dceb6296bb9</dc:identifier>
+        <dc:title>Albert Camus: An Analysis of his Thought</dc:title>
+        <dc:creator opf:file-as="Mélançon, Marcel J. &amp; Dole, Robert" opf:role="aut">Marcel J. Mélançon</dc:creator>
+        <dc:creator opf:file-as="Mélançon, Marcel J. &amp; Dole, Robert" opf:role="aut">Robert Dole</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (0.7.43) [http://calibre-ebook.com]</dc:contributor>
+        <dc:date>2011-02-03T23:00:00+00:00</dc:date>
+        <dc:language>en</dc:language>
+        <meta content="0" name="calibre:rating"/>
+        <meta content="2011-02-04T17:27:26.193000+00:00" name="calibre:timestamp"/>
+        <meta content="Albert Camus: An Analysis of his Thought" name="calibre:title_sort"/>
+    </metadata>
+    <guide>
+        <reference href="cover.jpg" type="cover" title="Cover"/>
+    </guide>
+</package>

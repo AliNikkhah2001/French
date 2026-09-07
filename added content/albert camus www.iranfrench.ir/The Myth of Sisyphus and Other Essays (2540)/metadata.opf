@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">2540</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">ff089543-52a8-4b16-bb6e-0970d3618a6e</dc:identifier>
+        <dc:title>The Myth of Sisyphus and Other Essays</dc:title>
+        <dc:creator opf:file-as="Camus, Albert" opf:role="aut">Albert Camus</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (0.7.43) [http://calibre-ebook.com]</dc:contributor>
+        <dc:date>2011-01-31T14:00:32.941000+00:00</dc:date>
+        <dc:description>Epub2Go.com v1.2</dc:description>
+        <dc:language>en</dc:language>
+        <meta content="2011-01-31T14:00:32.941000+00:00" name="calibre:timestamp"/>
+        <meta content="Myth of Sisyphus and Other Essays, The" name="calibre:title_sort"/>
+    </metadata>
+    <guide>
+        <reference href="cover.jpg" type="cover" title="Cover"/>
+    </guide>
+</package>

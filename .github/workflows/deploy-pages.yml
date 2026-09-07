@@ -25,6 +25,8 @@ jobs:
 
       - name: Build lesson manifest and static site
         run: node scripts/build-content.mjs
+        env:
+          BUILD_COPY_LIBRARY: "1"
 
       - name: Validate lesson Markdown
         run: node scripts/build-content.mjs --check

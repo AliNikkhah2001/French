@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">3514</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">3c8ba50a-68fc-4d7e-b47f-2d87a3c89235</dc:identifier>
+        <dc:title>Discours de suède</dc:title>
+        <dc:creator opf:file-as="Camus, Albert" opf:role="aut">Albert Camus</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (0.7.43) [http://calibre-ebook.com]</dc:contributor>
+        <dc:date>2011-02-04T17:27:32.783000+00:00</dc:date>
+        <dc:language>en</dc:language>
+        <meta content="2011-02-04T17:27:31.783000+00:00" name="calibre:timestamp"/>
+        <meta content="Discours de suède" name="calibre:title_sort"/>
+    </metadata>
+    <guide>
+        <reference href="cover.jpg" type="cover" title="Cover"/>
+    </guide>
+</package>

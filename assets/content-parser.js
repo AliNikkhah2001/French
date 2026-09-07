@@ -85,6 +85,21 @@ function tableToObjects(table) {
   return table.rows.map(row => Object.fromEntries(table.headers.map((header, index) => [header.trim().toLowerCase(), row[index] || ''])));
 }
 
+function examQuestion(row = {}) {
+  const type = String(row.type || row.qtype || '').trim().toLowerCase();
+  let qtype = 'mc';
+  if (type === 'fill') qtype = 'fill';
+  else if (type === 'order') qtype = 'order';
+  else if (type === 'write') qtype = 'write';
+  return {
+    type: qtype,
+    question: row.question || row.french || '',
+    options: qtype === 'mc' ? ['a', 'b', 'c', 'd'].map(letter => ({ key: letter.toUpperCase(), text: row[letter] || '' })) : [],
+    answer: String(row.answer || '').trim(),
+    explanation: row.explanation || row.note || ''
+  };
+}
+
 export function splitSections(body = '') {
   const matches = [...body.matchAll(/^#\s+(.+)$/gm)];
   if (!matches.length) return [{ title: 'Overview', body: body.trim() }];
@@ -175,7 +190,7 @@ export function parseLesson(markdown) {
   const vocabulary = tableToObjects(parseTable(get('vocabulary')));
   const collocations = tableToObjects(parseTable(get('collocations')));
   const flashcards = tableToObjects(parseTable(get('flashcards')));
-  const exam = tableToObjects(parseTable(get('exam practice')));
+  const exam = tableToObjects(parseTable(get('exam practice'))).map(examQuestion);
   const extras = sections.filter(section => !known.has(normalize(section.title))).map(section => ({ title: section.title, html: markdownToHtml(section.body) }));
   return {
     metadata: attributes,

@@ -6,6 +6,8 @@
   "description": "A Markdown-powered French learning platform for GitHub Pages.",
   "scripts": {
     "build": "node scripts/build-content.mjs",
+    "build:full": "set BUILD_COPY_LIBRARY=1&& node scripts/build-content.mjs",
+    "dev": "node scripts/serve.mjs",
     "test": "node scripts/build-content.mjs --check"
   },
   "engines": {

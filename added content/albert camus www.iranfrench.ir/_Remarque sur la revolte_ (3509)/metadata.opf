@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">3509</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">6fca6d92-c3c7-42a1-ab37-521dc1b347f5</dc:identifier>
+        <dc:title>“Remarque sur la révolte”</dc:title>
+        <dc:creator opf:file-as="Camus, Albert" opf:role="aut">Albert Camus</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (0.7.43) [http://calibre-ebook.com]</dc:contributor>
+        <dc:date>2011-02-04T17:27:22.587000+00:00</dc:date>
+        <dc:language>en</dc:language>
+        <meta content="2011-02-04T17:27:22.146000+00:00" name="calibre:timestamp"/>
+        <meta content="Remarque sur la révolte”" name="calibre:title_sort"/>
+    </metadata>
+    <guide>
+        <reference href="cover.jpg" type="cover" title="Cover"/>
+    </guide>
+</package>

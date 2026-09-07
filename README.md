@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icons/icon.svg" width="120" height="120" alt="Le Petit Atelier Français logo — Eiffel Tower"/>
+  <img src="assets/icons/icon.svg" width="110" height="110" alt="Le Petit Atelier Français logo — a minimal croissant on glass"/>
 </p>
 
 <h1 align="center">Le Petit Atelier Français 🇫🇷</h1>
@@ -14,11 +14,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/PWA-ready-153b67?style=flat-square" alt="PWA ready"/>
+  <img src="https://img.shields.io/badge/PWA-ready-1a4a80?style=flat-square" alt="PWA ready"/>
   <img src="https://img.shields.io/badge/iOS-standalone-black?style=flat-square" alt="iOS standalone"/>
   <img src="https://img.shields.io/badge/offline-cache-2f6c4f?style=flat-square" alt="offline"/>
   <img src="https://img.shields.io/badge/build-GitHub%20Pages-245a91?style=flat-square" alt="GitHub Pages"/>
-  <img src="https://img.shields.io/badge/no%20framework-vanilla%20JS-fbf5e9?style=flat-square" alt="no framework"/>
+  <img src="https://img.shields.io/badge/no%20framework-vanilla%20JS-c79a5b?style=flat-square" alt="no framework"/>
 </p>
 
 ---
@@ -28,6 +28,12 @@ A content-driven French learning platform for podcasts, books, articles, videos 
 > This README covers what the app does, what it looks like, and how to use it — as a **learner** and as an **author**.
 
 ## ✨ Features
+
+### 🏠 Home tab — your history at a glance
+- Default landing with a personalised greeting and today’s date
+- **History summary** — current/longest streak, today’s actions, due reviews, word-list count
+- **Continue learning** — jumps straight back to the last lesson you opened
+- The full library with per-lesson progress bars, search and type filters
 
 ### 📖 Lessons as interactive ateliers
 - **French ↔ English transcript cards** — reveal line by line, search, `Reveal all / Hide all`
@@ -76,7 +82,7 @@ SM-2 scheduler (Forgot / Hard / Good / Easy). Intervals grow from 1 min → 1 da
 - `manifest.webmanifest` (`/French/`, `standalone`, `id: /French/`) with shortcuts (Words, Review)
 - `sw.js` at root scope (`/French/sw.js` + `/French/assets/sw.js`) — precaches shell, network-first for navigation → fallback to `index.html` (fixes iOS 404), cache-first for `assets/content/data`
 - **iPhone Home Screen**: `apple-touch-icon`, `apple-mobile-web-app-capable`, `status-bar-style: default`, `viewport-fit=cover`
-- **Standalone minimal chrome** (`html.is-standalone`): 1px tricolor hairline, 44px top bar + `env(safe-area-inset-*)`, no shadows/rotations, flat cards, bottom tab bar (Lessons / Words / Review / Progress) with blur + 0.5px hairline — looks native, not a webpage
+- **Standalone minimal chrome** (`html.is-standalone`): floating 46px transparent croissant mark (nothing sticks), glass bottom tab bar (Accueil / Mots / Révision / Progrès) with minimal line SVG icons + blur + 0.5px hairline, larger fonts and finger-friendly 44px+ targets, flat glass cards — looks native, not a webpage
 - **Offline** — shell + visited lessons cached; install prompt (`beforeinstallprompt`) with “📲 Install app” button (Chrome/Android)
 - **Responsive + accessible** — 1100px / 980px / 760px breakpoints, `prefers-reduced-motion`, keyboard focus, `hidden !important` fix for loading states
 
@@ -84,28 +90,29 @@ SM-2 scheduler (Forgot / Hard / Good / Easy). Intervals grow from 1 min → 1 da
 
 ## 🎨 UI — what it looks like
 
-The design nods to French editorial + iOS minimal: cream paper, navy/blue, coral, yellow poster, Georgia headings, Inter/system body, 0.5px hairlines in app mode.
+A classic, minimalist French identity: deep navy, warm cream and a hint of bordeaux and gold, with a **minimal croissant** as the app mark (glassmorphism — translucent frosted panels, hairline borders, soft blur). Georgia serif headlines over a clean system body.
 
 | Lesson — Transcript lab | Word list — Mon carnet |
 |---|---|
 | 🔊 line + Reveal English<br/>Progress `0/35 revealed` | `+ Add word` form + Bulk import<br/>Status: Due / Soon / Mastered |
 
-| Review — Révision | Dashboard — Le tableau de bord |
+| Home — your history | Review — Révision |
 |---|---|
-| Spaced card: *french → english*<br/>Forgot / Hard / Good / Easy | Streak · vocab/grammar · 365 grid · frequency bands |
+| Streak, continue learning, lesson menu | Spaced card: *french → english*<br/>Forgot / Hard / Good / Easy |
 
 > **Screenshots:** add your captures to `docs/` and reference them here, e.g.
 > ```md
+> ![Home](docs/screenshot-home.png)
 > ![Transcript lab](docs/screenshot-transcript.png)
 > ![Review](docs/screenshot-review.png)
 > ![Word list](docs/screenshot-wordlist.png)
 > ![Standalone tab bar on iPhone](docs/screenshot-ios-standalone.png)
 > ```
-> Tip on iPhone: open `https://alinikkhah2001.github.io/French/` → Share → **Add to Home Screen** → see bottom tab bar + safe-area.
+> Tip on iPhone: open `https://alinikkhah2001.github.io/French/` → Share → **Add to Home Screen** → bottom tab bar (Accueil · Mots · Révision · Progrès) + safe-area, with a floating glass croissant mark instead of a sticky header.
 
 **Web vs App:**
-- **Browser** — tricolor 6px, sticky blurred top bar (78px), top nav pills, shadows/rotates.
-- **Installed (standalone)** — 1px hairline, 44px bar, bottom tab bar, flat cards, `Install app` hidden, `-apple-system` font, no bounce (`overscroll-behavior: none`).
+- **Browser** — thin 3px tricolor hairline, glass topbar with the croissant brand mark, and a left lesson-museum/library column.
+- **Installed (standalone)** — floating 46px transparent brand mark (nothing sticky), glass bottom tab bar with minimal line icons, larger fonts and 44px+ touch targets, flat cards, no bounce (`overscroll-behavior: none`).
 
 ---
 
@@ -184,9 +191,9 @@ No API keys, no backend — all client-side. CORS: Wiktionary via `origin=*` fal
 ## 📱 PWA details
 
 - `assets/manifest.webmanifest` scoped to `/French/` (fixes iOS 404 where old `./` resolved to `assets/`), icons absolute `/French/assets/icons/...`
-- `assets/sw.js` + `sw.js` at root — `CACHE_NAME: atelier-francais-v3`, precache via `new URL(url, self.location).href`, `install` → `skipWaiting`, `activate` → `clients.claim`, navigation: network-first → cached `index.html` / `./`, assets: cache-first.
-- Registration in `assets/app.js:1167` as `../sw.js` with scope `../` (i.e. `/French/`), fallback to `assets/sw.js`.
-- App shell: `index.html:128` bottom `nav.ios-tabbar` (hidden until `html.is-standalone`), wired to `location.hash` (`lessons`/`wordlist`/`review`/`dashboard`).
+- `assets/sw.js` + `sw.js` at root — `CACHE_NAME: atelier-francais-v4`, precache via `new URL(url, self.location).href`, `install` → `skipWaiting`, `activate` → `clients.claim`, navigation: network-first → cached `index.html` / `./`, assets: cache-first.
+- Registration in `assets/app.js` as `../sw.js` with scope `../` (i.e. `/French/`), fallback to `assets/sw.js`.
+- App shell: `index.html` bottom `nav.ios-tabbar` (hidden until `html.is-standalone`), wired to `location.hash` (`home`/`wordlist`/`review`/`dashboard`).
 
 If Home Screen still shows 404 after update: **remove icon, clear Safari website data for `github.io`, re-add**.
 
@@ -198,10 +205,10 @@ If Home Screen still shows 404 after update: **remove icon, clear Safari website
 .
 ├── .github/workflows/deploy-pages.yml
 ├── assets/
-│   ├── app.js              # router, render, word list + SM-2 + dictionary + TTS + PWA
+│   ├── app.js              # router, render, home history + word list + SM-2 + dictionary + TTS + PWA
 │   ├── analytics-utils.js
 │   ├── content-parser.js
-│   ├── styles.css          # cream/paper theme + standalone minimal + bottom tabbar + safe-area
+│   ├── styles.css          # classic minimal French + glass + home + standalone tabbar/safe-area
 │   ├── sw.js               # also copied to /sw.js for root scope
 │   ├── manifest.webmanifest
 │   ├── logo.svg
@@ -215,8 +222,10 @@ If Home Screen still shows 404 after update: **remove icon, clear Safari website
 │   └── _sample-transcript.tsv
 ├── data/fr_50k.txt         # OpenSubtitles 2018 top 50k (benchmark uses first 5k)
 ├── docs/content-format.md
-├── scripts/build-content.mjs
-├── index.html              # PWA meta, topbar, library, 4 views, ios-tabbar, templates
+├── scripts/
+│   ├── build-content.mjs   # manifest + analytics build/validator
+│   └── make-icons.py       # regenerates logo SVG + all PNG icons (PIL)
+├── index.html              # PWA meta, glass topbar, home view, 4 views, ios-tabbar, icon sprite
 └── package.json            # type: module, node >=20, scripts: build/test
 ```
 
@@ -240,7 +249,7 @@ See [docs/content-format.md](docs/content-format.md). Known top-level `#` sectio
 ## 🌙 Themes, a11y, performance
 
 - Light / dark via `html[data-theme]` + `localStorage atelier-theme` + `prefers-color-scheme`
-- `overscroll-behavior: none` (no bounce in app), `-webkit-tap-highlight-color: transparent`, focus ring `var(--yellow)`
+- `overscroll-behavior: none` (no bounce in app), `-webkit-tap-highlight-color: transparent`, focus ring `var(--gold)`
 - `[hidden] { display:none !important }` fix for `display:grid` override
 - `prefers-reduced-motion` disables animations
 - No framework — ~30 KB JS (parser + app) + CSS, instant `dist/` deploy

@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">2541</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">ed34829d-b552-4558-bcbf-bad224b8109e</dc:identifier>
+        <dc:title>The Stranger</dc:title>
+        <dc:creator opf:file-as="Camus, Albert" opf:role="aut">Albert Camus</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (0.7.43) [http://calibre-ebook.com]</dc:contributor>
+        <dc:date>2011-01-31T14:00:34.962000+00:00</dc:date>
+        <dc:description>SUMMARY:
+Since it was first published in English, in 1946, Albert Camus's first novel, The Stranger (L'etranger), has had a profound impact on millions of American readers. Through this story of an ordinary man who unwittingly gets drawn into a senseless murder on a sun-drenched Algerian beach, Camus explored what he termed "the nakedness of man faced with the absurd." Now, in an illuminating new American translation, extraordinary for its exactitude and clarity, the original intent of The Stranger is made more immediate. This haunting novel has been given a new life for generations to come.</dc:description>
+        <dc:publisher>Vintage International</dc:publisher>
+        <dc:identifier opf:scheme="ISBN">9780679720201</dc:identifier>
+        <dc:language>en</dc:language>
+        <dc:subject>Unread</dc:subject>
+        <meta content="2011-01-31T14:00:34.962000+00:00" name="calibre:timestamp"/>
+        <meta content="Stranger, The" name="calibre:title_sort"/>
+    </metadata>
+    <guide>
+        <reference href="cover.jpg" type="cover" title="Cover"/>
+    </guide>
+</package>

@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">3517</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">529e13da-116b-40da-b695-9ecea75f5fc5</dc:identifier>
+        <dc:title>“Kadar a eu son jour de peur”</dc:title>
+        <dc:creator opf:file-as="Camus, Albert" opf:role="aut">Albert Camus</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (0.7.43) [http://calibre-ebook.com]</dc:contributor>
+        <dc:date>2011-02-04T17:27:37.687000+00:00</dc:date>
+        <dc:language>en</dc:language>
+        <meta content="2011-02-04T17:27:37.356000+00:00" name="calibre:timestamp"/>
+        <meta content="Kadar a eu son jour de peur”" name="calibre:title_sort"/>
+    </metadata>
+    <guide>
+        <reference href="cover.jpg" type="cover" title="Cover"/>
+    </guide>
+</package>

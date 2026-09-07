@@ -1,14 +1,39 @@
-import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { chmod, cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseFrontmatter, parseLesson } from '../assets/content-parser.js';
 import { normalizeFrench, stripMarkdown, tokenizeFrench, uniqueFrenchTokens } from '../assets/analytics-utils.js';
 
+async function makeWritable(root) {
+  const files = await walkAll(root);
+  for (const file of files) {
+    try { await chmod(file, 0o666); } catch { /* ignore */ }
+  }
+  return files.length;
+}
+
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const contentRoot = join(projectRoot, 'content');
+const addedRoot = join(projectRoot, 'added content');
 const distRoot = join(projectRoot, 'dist');
 const benchmarkPath = join(projectRoot, 'data', 'fr_50k.txt');
 const checkOnly = process.argv.includes('--check');
+const copyLibrary = process.env.BUILD_COPY_LIBRARY === '1';
+
+async function pathExists(file) {
+  try { await stat(file); return true; } catch { return false; }
+}
+
+async function walkAll(directory, keep = () => true) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const absolute = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await walkAll(absolute, keep));
+    else if (keep(absolute)) files.push(absolute);
+  }
+  return files;
+}
 
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -94,7 +119,8 @@ function validate(metadata, parsed, file, slugs) {
   if (metadata.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(metadata.slug)) errors.push('slug must contain lowercase letters, numbers, and single hyphens only');
   if (slugs.has(metadata.slug)) errors.push(`duplicate slug “${metadata.slug}”`);
   if (!parsed.overview && !parsed.transcript.length && !parsed.examGuide) errors.push('lesson needs an Overview, Transcript, or Exam guide section');
-  if (parsed.exam.some(question => !['A', 'B', 'C', 'D'].includes((question.answer || '').toUpperCase()))) errors.push('exam answers must be A, B, C, or D');
+  if (parsed.exam.some(question => question.type === 'mc' && !['A', 'B', 'C', 'D'].includes((question.answer || '').toUpperCase()))) errors.push('multiple-choice exam answers must be A, B, C, or D');
+  if (parsed.exam.some(question => question.type !== 'mc' && !question.answer)) errors.push('fill / order / write exam questions need an answer');
   if (errors.length) throw new Error(`${publicPath(file)}:\n- ${errors.join('\n- ')}`);
   slugs.add(metadata.slug);
 }
@@ -173,6 +199,71 @@ function summaryMarkdown(analytics) {
   return `# French learning content analytics\n\nGenerated: ${analytics.generatedAt}\n\n| Measure | Value |\n|---|---:|\n| Published lessons | ${totals.lessons} |\n| Transcript lines | ${totals.transcriptLines} |\n| French transcript tokens | ${totals.transcriptTokens} |\n| Unique transcript words | ${totals.uniqueTranscriptWords} |\n| Vocabulary entities | ${totals.vocabulary} |\n| Grammar entities | ${totals.grammar} |\n| Collocations | ${totals.collocations} |\n| Top-5,000 catalogue coverage | ${totals.catalogueCommonWords} / 5,000 (${totals.catalogueCoveragePercent}%) |\n\n## Per lesson\n\n| Lesson | Type | Lines | Tokens | Unique | Vocabulary | Grammar |\n|---|---|---:|---:|---:|---:|---:|\n${lessonRows}\n\n> Benchmark: ${analytics.benchmark.source}. ${analytics.benchmark.caveat}\n`;
 }
 
+function cleanTitle(name) {
+  const base = basename(name.replace(/\.(pdf|epub|PDF|EPUB)$/i, ''));
+  return base
+    .replace(/^\(\d+\)\s*/, '')
+    .replace(/\s*\(\d+\)\s*$/, '')
+    .replace(/^\d+\s*[-–—]\s*/, '')
+    .replace(/\s*[-–—]\s*iranfrench\.ir\s*$/i, '')
+    .replace(/\s*www\.iranfrench\.ir\s*$/i, '')
+    .replace(/\+?\(?\+?corrigés?\)?$/i, '')
+    .replace(/\+corrigés?$/i, '')
+    .replace(/\+Corrigés?$/i, '')
+    .trim() || name;
+}
+
+function classifyDocument(relPath) {
+  const lower = String(relPath).toLowerCase();
+  const kind = lower.endsWith('.pdf') ? 'pdf' : lower.endsWith('.epub') ? 'epub' : null;
+  if (!kind) return null;
+  if (lower.includes('tintin')) return { kind, category: 'books', section: 'Bandes dessinées — Tintin' };
+  if (lower.includes('grammaire')) return { kind, category: 'learning', section: 'Grammaire (Progressive)' };
+  if (lower.includes('albert camus')) return { kind, category: 'books', section: 'Littérature — Albert Camus' };
+  return { kind, category: 'books', section: 'Livres' };
+}
+
+function lessonCollection(item) {
+  if (item.type === 'podcast') return 'podcasts';
+  if (item.type === 'video') return 'songs';
+  if (item.type === 'book') return 'books';
+  return 'learning';
+}
+
+async function buildLibrary(records) {
+  const collections = [
+    { id: 'podcasts', label: 'Podcasts', short: 'Écoutez', emoji: '🎙️', blurb: 'Real French conversations, revealed line by line.', items: [] },
+    { id: 'songs', label: 'Songs', short: 'Chantez', emoji: '🎵', blurb: 'Learn with music — Billy Easton song lessons.', items: [] },
+    { id: 'books', label: 'Books', short: 'Lisez', emoji: '📚', blurb: 'Books and bandes dessinées (Camus, Tintin, …) to read and mark.', items: [] },
+    { id: 'learning', label: 'French learning books', short: 'Révisez', emoji: '📖', blurb: 'Grammar, vocabulary and exam guides.', items: [] }
+  ];
+  const byId = new Map(collections.map(collection => [collection.id, collection]));
+  const lessonMeta = new Map(records.map(record => [record.item.slug, record.item]));
+  let documents = [];
+  if (await pathExists(addedRoot)) {
+    const all = await walkAll(addedRoot, file => /\.(pdf|epub)$/i.test(file));
+    documents = all.map(file => {
+      const rel = publicPath(file);
+      const info = classifyDocument(rel);
+      return { kind: info.kind, title: cleanTitle(file), category: info.category, section: info.section, path: rel };
+    }).sort((a, b) => a.title.localeCompare(b.title, 'fr'));
+  }
+  for (const record of records) {
+    const item = record.item;
+    byId.get(lessonCollection(item)).items.push({
+      kind: 'lesson', slug: item.slug, title: item.title, emoji: item.emoji, type: item.type,
+      level: item.level, duration: item.duration, author: item.author, description: item.description,
+      path: item.path, has_audio: item.has_audio
+    });
+  }
+  for (const doc of documents) {
+    const target = byId.get(doc.category);
+    target.items.push({ kind: doc.kind, title: doc.title, section: doc.section, path: doc.path });
+  }
+  for (const collection of collections) collection.items.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
+  return { version: 1, generatedAt: new Date().toISOString(), collections };
+}
+
 async function build() {
   const files = await walk(contentRoot);
   const slugs = new Set();
@@ -194,7 +285,9 @@ async function build() {
     console.log(`Validated ${records.length} lesson${records.length === 1 ? '' : 's'}, ${analytics.totals.vocabulary} vocabulary entities, ${analytics.totals.grammar} grammar entities, and 5,000 benchmark words.`);
     return;
   }
-  await rm(distRoot, { recursive: true, force: true });
+  await rm(join(distRoot, 'content'), { recursive: true, force: true });
+  await rm(join(distRoot, 'data'), { recursive: true, force: true });
+  await rm(join(distRoot, 'assets'), { recursive: true, force: true });
   await mkdir(join(distRoot, 'content'), { recursive: true });
   await mkdir(join(distRoot, 'data'), { recursive: true });
   await cp(join(projectRoot, 'assets'), join(distRoot, 'assets'), { recursive: true });
@@ -210,7 +303,17 @@ async function build() {
   await writeFile(join(distRoot, 'content', 'index.json'), `${JSON.stringify({ version: 2, analytics: 'data/analytics.json', lessons: records.map(record => record.item) }, null, 2)}\n`);
   await writeFile(join(distRoot, 'data', 'analytics.json'), `${JSON.stringify(analytics, null, 2)}\n`);
   await writeFile(join(distRoot, 'data', 'analytics-summary.md'), summaryMarkdown(analytics));
-  console.log(`Built ${records.length} lessons and analytics into ${relative(projectRoot, distRoot)}/.`);
+  const library = await buildLibrary(records);
+  await writeFile(join(distRoot, 'content', 'library.json'), `${JSON.stringify(library, null, 2)}\n`);
+  if (copyLibrary && (await pathExists(addedRoot))) {
+    const destination = join(distRoot, 'added content');
+    await rm(destination, { recursive: true, force: true });
+    await cp(addedRoot, destination, { recursive: true });
+    // ensure copied library files are writable (source files can be read-only)
+    await makeWritable(destination);
+    console.log(`Copied ${relative(projectRoot, addedRoot)} into dist/ for the PDF reader.`);
+  }
+  console.log(`Built ${records.length} lessons, ${library.collections.reduce((sum, c) => sum + c.items.length, 0)} library items and analytics into ${relative(projectRoot, distRoot)}/.`);
 }
 
 build().catch(error => {
