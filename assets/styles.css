@@ -603,6 +603,34 @@ html[data-theme="dark"] .epub-section { color: var(--ink); }
 .practice-source-hint { color: var(--muted); font-size: .74rem; flex: 1 1 100%; }
 .pdf-text { background: var(--paper); }
 .reader-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+/* ---------- Phonétique ---------- */
+.phoneme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.phoneme-card { border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 15px; background: var(--paper); }
+.phoneme-head { display: flex; align-items: center; gap: 10px; }
+.phoneme-ipa { font: 700 1.3rem/1 Georgia, serif; color: var(--blue-2); background: var(--blue-soft); border-radius: 9px; padding: 5px 9px; }
+.phoneme-head b { font: inherit; font-weight: 800; font-size: .88rem; }
+.phoneme-head .speak-button { margin-left: auto; }
+.phoneme-words { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--muted); }
+.phoneme-word { border: 1px solid var(--hairline); border-radius: 999px; padding: 6px 11px; background: var(--cream); color: var(--ink); font: inherit; font-size: .86rem; cursor: pointer; }
+.phoneme-word:hover { border-color: var(--blue-2); }
+.phoneme-note { margin: 10px 0 0; color: var(--muted); font-size: .78rem; }
+
+/* Practice review */
+.practice-review { text-align: left; margin: 16px 0; border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 16px; background: var(--paper); }
+.practice-review h4 { margin: 0 0 10px; font-family: Georgia, serif; }
+.practice-review ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.review-row { display: flex; gap: 10px; align-items: start; border-radius: 10px; padding: 9px 11px; background: var(--cream); }
+.review-row.ok { background: color-mix(in srgb, var(--mint) 55%, var(--paper)); }
+.review-row.bad { background: color-mix(in srgb, var(--red) 12%, var(--paper)); }
+.review-mark { font-weight: 900; }
+.review-row.ok .review-mark { color: #4b9c73; }
+.review-row.bad .review-mark { color: var(--red); }
+.review-row b, .review-row small { display: block; }
+.review-row b { font-size: .88rem; }
+.review-row small { color: var(--muted); font-size: .74rem; margin-top: 3px; }
+.review-user { font-style: italic; }
+.review-correct { color: var(--blue-2); font-weight: 700; }
 .practice-modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 20px; }
 .practice-mode { display: flex; align-items: center; gap: 11px; border: 1px solid var(--hairline); border-radius: 14px; padding: 13px 14px; background: var(--paper); color: var(--ink); text-align: left; cursor: pointer; box-shadow: var(--soft-shadow); transition: border-color .18s ease, box-shadow .18s ease; }
 .practice-mode:hover { border-color: var(--blue-2); }

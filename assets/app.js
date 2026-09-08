@@ -66,6 +66,7 @@ function readRoute() {
   if (raw === 'review') return { view: 'review', slug: null, tab: null };
   if (raw === 'library') return { view: 'library', slug: null, tab: null };
   if (raw === 'practice') return { view: 'practice', slug: null, tab: null };
+  if (raw === 'phonetics') return { view: 'phonetics', slug: null, tab: null };
   const params = new URLSearchParams(raw);
   return {
     view: params.get('view') || 'lesson',
@@ -172,6 +173,7 @@ async function loadManifest() {
     else if (route.view === 'library') showLibrary();
     else if (route.view === 'reader' && route.file) showReader(route.file, route.type);
     else if (route.view === 'practice') showPractice();
+    else if (route.view === 'phonetics') showPhonetics();
     else if (route.view === 'home') showHome();
     else {
       const selected = state.manifest.lessons.find(item => item.slug === route.slug) || state.manifest.lessons[0];
@@ -191,6 +193,7 @@ function showLoading() {
   $('library-view').hidden = true;
   $('reader-view').hidden = true;
   $('practice-view').hidden = true;
+  $('phonetics-view').hidden = true;
   $('dashboard-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
@@ -205,6 +208,7 @@ function showError(message) {
   $('library-view').hidden = true;
   $('reader-view').hidden = true;
   $('practice-view').hidden = true;
+  $('phonetics-view').hidden = true;
   $('dashboard-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
@@ -220,6 +224,7 @@ function showLesson() {
   $('library-view').hidden = true;
   $('reader-view').hidden = true;
   $('practice-view').hidden = true;
+  $('phonetics-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
   $('lesson-view').hidden = false;
@@ -410,6 +415,7 @@ function hideAllMainViews() {
   $('library-view').hidden = true;
   $('reader-view').hidden = true;
   $('practice-view').hidden = true;
+  $('phonetics-view').hidden = true;
   $('dashboard-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
@@ -644,12 +650,17 @@ async function goToPage(page) {
     state.pdfMemory.zoom = state.pdfZoom;
   }
   const viewport = pageObj.getViewport({ scale: state.pdfZoom });
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const canvas = document.createElement('canvas');
   canvas.className = 'reader-canvas';
-  canvas.width = Math.floor(viewport.width);
-  canvas.height = Math.floor(viewport.height);
+  canvas.width = Math.floor(viewport.width * dpr);
+  canvas.height = Math.floor(viewport.height * dpr);
+  canvas.style.width = `${Math.floor(viewport.width)}px`;
+  canvas.style.height = `${Math.floor(viewport.height)}px`;
   $('reader-body').replaceChildren(canvas);
-  const renderTask = pageObj.render({ canvasContext: canvas.getContext('2d'), viewport });
+  const context = canvas.getContext('2d');
+  const transform = dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined;
+  const renderTask = pageObj.render({ canvasContext: context, viewport, transform });
   state._renderTask = renderTask;
   try { await renderTask.promise; } catch (error) {
     if (!error || error.name !== 'RenderingCancelledException') {
@@ -1106,6 +1117,16 @@ let practiceQuestions = [];
 let practiceIndex = 0;
 let practiceMode = 'mixed';
 let practiceSource = 'words';
+let practiceDifficulty = 'all';
+let practiceLength = 10;
+let practiceRetryQueue = null;
+
+const PRACTICE_DIFFICULTY = {
+  easy: ['mc', 'matching', 'typing'],
+  medium: ['mc', 'matching', 'typing', 'synonym', 'fill'],
+  hard: ['mc', 'matching', 'typing', 'synonym', 'fill', 'order', 'grammar', 'spoken'],
+  all: ['mc', 'matching', 'typing', 'synonym', 'fill', 'order', 'grammar', 'spoken']
+};
 let practiceRound = 0;
 let practiceAnswers = [];
 
@@ -1234,9 +1255,9 @@ function buildPracticeQuestions(mode) {
     questions.push({ type: 'matching', mode: 'matching', prompt: 'Match each French word to its English meaning.', pairs: batch.map(w => ({ fr: w.french, en: w.english })), points: 30 });
   };
 
-  const modes = mode === 'mixed' ? PRACTICE_MODES.filter(m => m.id !== 'mixed').map(m => m.id) : [mode];
+  const modes = mode === 'mixed' ? PRACTICE_DIFFICULTY[practiceDifficulty] || PRACTICE_DIFFICULTY.all : [mode];
 
-  const sample = shuffle(pool).slice(0, 10);
+  const sample = shuffle(pool).slice(0, practiceLength + 2);
   sample.forEach(word => {
     const m = shuffle(modes)[0];
     if (m === 'mc') addMc(word);
@@ -1249,7 +1270,7 @@ function buildPracticeQuestions(mode) {
 
   if (modes.includes('order')) addOrder();
   if (modes.includes('matching')) addMatchingBatch(sample);
-  return shuffle(questions.filter(q => q.answer || q.pairs)).slice(0, 12);
+  return shuffle(questions.filter(q => q.answer || q.pairs)).slice(0, practiceLength);
 }
 
 function showPractice() {
@@ -1296,6 +1317,13 @@ function renderPracticeHero(stats, todayRounds) {
       <button class="word-filter ${practiceSource === 'words' ? 'active' : ''}" type="button" data-source="words">🗒️ My word list</button>
       <span class="practice-source-hint">${practiceSource === 'lesson' ? `Questions come from “${escapeHtml(currentLesson?.title || 'this lesson')}” (${currentLesson?.type || ''}).` : 'Questions come from every word you added.'}</span>
     </div>
+    <div class="practice-source">
+      <span class="kicker" style="margin-right:10px">Difficulty</span>
+      ${[['all','Tous'],['easy','Débutant'],['medium','Intermédiaire'],['hard','Avancé']].map(([id, label]) => `<button class="word-filter ${practiceDifficulty === id ? 'active' : ''}" type="button" data-difficulty="${id}">${label}</button>`).join('')}
+      <span class="kicker" style="margin-right:10px;margin-left:14px">Length</span>
+      ${[5, 10, 15].map(n => `<button class="word-filter ${practiceLength === n ? 'active' : ''}" type="button" data-length="${n}">${n} Q</button>`).join('')}
+      <span class="practice-source-hint">Difficulty selects which question types appear — Débutant keeps it simple, Avancé adds word order, grammar and listen-and-write.</span>
+    </div>
     <div class="practice-modes" role="tablist" aria-label="Practice formats">${PRACTICE_MODES.map(mode => `<button class="practice-mode ${mode.id === practiceMode ? 'active' : ''}" type="button" data-mode="${mode.id}" role="tab" aria-selected="${mode.id === practiceMode}"><span class="practice-mode-emoji">${mode.emoji}</span><div><b>${mode.label}</b><small>${mode.blurb}</small></div></button>`).join('')}</div>
     <div class="practice-stage" id="practice-stage"></div>`;
   $('practice-view').querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
@@ -1305,6 +1333,14 @@ function renderPracticeHero(stats, todayRounds) {
   $('practice-view').querySelectorAll('[data-source]').forEach(button => button.addEventListener('click', () => {
     if (button.disabled) return;
     practiceSource = button.dataset.source;
+    renderPractice();
+  }));
+  $('practice-view').querySelectorAll('[data-difficulty]').forEach(button => button.addEventListener('click', () => {
+    practiceDifficulty = button.dataset.difficulty;
+    renderPractice();
+  }));
+  $('practice-view').querySelectorAll('[data-length]').forEach(button => button.addEventListener('click', () => {
+    practiceLength = Number(button.dataset.length);
     renderPractice();
   }));
   $('practice-start').addEventListener('click', () => startPractice(practiceMode));
@@ -1329,7 +1365,12 @@ async function startPractice(mode) {
     } catch { /* keep whatever lesson is loaded */ }
   }
   practiceMode = mode || practiceMode;
-  practiceQuestions = buildPracticeQuestions(practiceMode);
+  if (practiceRetryQueue && practiceRetryQueue.length) {
+    practiceQuestions = practiceRetryQueue;
+    practiceRetryQueue = null;
+  } else {
+    practiceQuestions = buildPracticeQuestions(practiceMode, practiceDifficulty, practiceLength);
+  }
   practiceIndex = 0;
   practiceAnswers = [];
   if (!practiceQuestions.length) {
@@ -1479,7 +1520,30 @@ function checkPractice() {
   }
   const check = $('practice-check');
   check.innerHTML = 'Next →';
-  check.onclick = () => { practiceAnswers.push({ q: practiceIndex, correct: isCorrect }); advancePractice(); };
+  check.onclick = () => {
+    const userAnswer = capturePracticeAnswer(question);
+    practiceAnswers.push({ q: practiceIndex, correct: isCorrect, userAnswer, question });
+    advancePractice();
+  };
+}
+
+function capturePracticeAnswer(question) {
+  const field = document.querySelector('.practice-question');
+  if (!field) return '';
+  if (question.type === 'mc') {
+    const selected = field.querySelector('input:checked');
+    if (!selected) return '(no answer)';
+    const option = question.options[Number(selected.value)];
+    return option ? option.text : '(no answer)';
+  }
+  if (question.type === 'order') {
+    return [...field.querySelectorAll('.order-target .order-chip')].map(node => node.textContent.trim()).join(' ') || '(no answer)';
+  }
+  if (question.type === 'matching') {
+    return field.querySelector('.matching-status')?.classList.contains('ok') ? '✓ matched' : '(no match)';
+  }
+  const value = field.querySelector('.fill-input, .write-input')?.value;
+  return value && value.trim() ? value.trim() : '(no answer)';
 }
 
 function recordPracticeCorrect(points = 10) {
@@ -1511,18 +1575,35 @@ function advancePractice() {
 
 function finishPractice() {
   const total = practiceQuestions.length;
-  const correct = practiceAnswers.filter(a => a && a.correct === true).length;
+  const reviewed = practiceAnswers.filter(a => a && a.correct !== null && a.correct !== undefined);
+  const correct = reviewed.filter(a => a.correct === true).length;
   const pct = total ? Math.round(correct / total * 100) : 0;
   const stats = practiceStats();
   stats.best = Math.max(stats.best || 0, pct);
   stats.rounds = (stats.rounds || 0) + 1;
   savePracticeStats(stats);
+  const rows = practiceQuestions.map((question, index) => {
+    const answer = practiceAnswers[index];
+    if (!answer) return '';
+    const ok = answer.correct === true;
+    const user = escapeHtml(answer.userAnswer || '(no answer)');
+    const correctAnswer = question.type === 'matching' ? 'the matching pairs' : escapeHtml(question.answer || '');
+    return `<li class="review-row ${ok ? 'ok' : 'bad'}"><span class="review-mark">${ok ? '✓' : '✗'}</span><div><b>${inlineMarkdown(question.question || question.prompt || '')}</b><small class="review-user">You: ${user}</small>${ok ? '' : `<small class="review-correct">Answer: ${correctAnswer}</small>`}</div></li>`;
+  }).join('');
+  const missed = practiceQuestions.filter((_, index) => !(practiceAnswers[index]?.correct === true));
   $('practice-stage').innerHTML = `<div class="practice-done">
     <span>🎉</span><b>Round finished!</b>
     <p>${correct}/${total} correct · <b>${pct}%</b></p>
     <div class="practice-stats-inline"><span>🔥 Streak <b>${stats.streak}</b></span><span>✨ XP <b>${stats.xp}</b></span><span>🏆 Best <b>${stats.best}%</b></span></div>
+    <div class="practice-review"><h4>Answer review</h4><ol>${rows || '<li>No answers recorded.</li>'}</ol></div>
+    ${missed.length ? `<button class="button red" id="practice-retry" type="button">↺ Retry ${missed.length} missed</button>` : ''}
     <button class="button blue" id="practice-round" type="button">Another round</button>
   </div>`;
+  const retry = $('practice-retry');
+  if (retry) retry.addEventListener('click', () => {
+    practiceRetryQueue = missed.map(question => ({ ...question }));
+    startPractice(practiceMode);
+  });
   $('practice-round').addEventListener('click', () => startPractice(practiceMode));
   const statEls = document.querySelectorAll('.practice-stat b');
   if (statEls.length >= 4) {
@@ -1531,6 +1612,105 @@ function finishPractice() {
     statEls[2].textContent = `${stats.best}%`;
     statEls[3].textContent = practiceToday(stats);
   }
+}
+
+/* ------------------- Phonétique ------------------- */
+
+const PHONEMES = [
+  {
+    group: 'Voyelles orales', tip: 'Vowels — short, tense, never diphthongised.',
+    items: [
+      { ipa: 'i', letters: 'i · î · y', words: ['si', 'ville', 'fini'], note: 'like “see” but shorter and tenser.' },
+      { ipa: 'e', letters: 'é · er · ez', words: ['été', 'café', 'parler'], note: 'closed e, like “lay” without the diphthong.' },
+      { ipa: 'ɛ', letters: 'è · ê · ai · ei', words: ['tête', 'sel', 'mais'], note: 'open e, like “bed”.' },
+      { ipa: 'a', letters: 'a · à', words: ['chat', 'table', 'là'], note: 'like “father” but shorter.' },
+      { ipa: 'ɑ', letters: 'â · some a', words: ['pâte', 'âge'], note: 'back a — less common, merges with “a”.' },
+      { ipa: 'o', letters: 'o · au · eau', words: ['mot', 'eau', 'rose'], note: 'closed o, like “go” without the w.' },
+      { ipa: 'ɔ', letters: 'o · au', words: ['port', 'bonjour', 'or'], note: 'open o, like “pot”.' },
+      { ipa: 'u', letters: 'ou', words: ['tout', 'cou', 'vous'], note: 'like “moon”.' },
+      { ipa: 'y', letters: 'u · û', words: ['tu', 'rue', 'sûr'], note: 'like “ee” but with rounded lips.' },
+      { ipa: 'ø', letters: 'eu · œu (closed)', words: ['peu', 'deux', 'creux'], note: 'rounded “ay”, like German ö.' },
+      { ipa: 'œ', letters: 'eu · œ (open)', words: ['seur', 'cœur', 'heure'], note: 'rounded “eh”, between “eh” and “uh”.' },
+      { ipa: 'ə', letters: 'e (weak)', words: ['le', 'petit', 'de'], note: 'the whispered “uh” of unstressed e.' }
+    ]
+  },
+  {
+    group: 'Voyelles nasales', tip: 'Nasal vowels — air escapes through the nose. The following n/m is not pronounced.',
+    items: [
+      { ipa: 'ɑ̃', letters: 'an · am · en · em', words: ['sans', 'temps', 'enfant'], note: 'nasal “ah”, like a hummed “ah”.' },
+      { ipa: 'ɛ̃', letters: 'in · im · ain · ein · yn', words: ['pain', 'vin', 'main'], note: 'nasal “eh”, like “sam” through the nose.' },
+      { ipa: 'ɔ̃', letters: 'on · om', words: ['bon', 'mon', 'nom'], note: 'nasal “oh”, hummed.' },
+      { ipa: 'œ̃', letters: 'un · um', words: ['un', 'parfum', 'brun'], note: 'nasal “uh” — merges with “in” for many speakers.' }
+    ]
+  },
+  {
+    group: 'Semi-voyelles', tip: 'Glides — the lips/tongue in transition.',
+    items: [
+      { ipa: 'j', letters: 'i + vowel · ill · y', words: ['pied', 'fille', 'yeux', 'travailler'], note: 'like “y” in “yes”.' },
+      { ipa: 'w', letters: 'ou + vowel · oi', words: ['oui', 'moi', 'toi'], note: 'like “w” in “water”.' },
+      { ipa: 'ɥ', letters: 'u + vowel', words: ['huit', 'nuit', 'suis'], note: 'rounded “w” — like the glide before “ü”.' }
+    ]
+  },
+  {
+    group: 'Consonnes', tip: 'Consonants are crisp; final ones are usually silent.',
+    items: [
+      { ipa: 'ʁ', letters: 'r', words: ['Paris', 'rouge', 'regarder'], note: 'uvular r — a soft gargle at the back of the throat.' },
+      { ipa: 'ʃ', letters: 'ch', words: ['chat', 'chercher', 'cochon'], note: 'like “sh” in “shop”.' },
+      { ipa: 'ʒ', letters: 'j · ge', words: ['je', 'jour', 'rouge'], note: 'like the “s” in “measure”.' },
+      { ipa: 'ɲ', letters: 'gn', words: ['agneau', 'montagne', 'signe'], note: 'like “ny” in “canyon”.' },
+      { ipa: 'ŋ', letters: 'ng (loanwords)', words: ['parking', 'camping'], note: 'like “ng” in “sing”.' },
+      { ipa: 'k', letters: 'c · qu · k · ch', words: ['café', 'quoi', 'kilo'], note: 'like “k”, always — never soft before e/i.' },
+      { ipa: 'g', letters: 'g (before a/o/u) · gu (before e/i)', words: ['gare', 'guitare', 'long'], note: 'like “g” in “go”.' },
+      { ipa: 's', letters: 's · ss · ç · c (before e/i)', words: ['sac', 'poisson', 'français'], note: 'like “s” in “see”.' },
+      { ipa: 'z', letters: 'z · s between vowels', words: ['zéro', 'maison', 'rose'], note: 'like “z” in “zoo”.' },
+      { ipa: 'f', letters: 'f · ph', words: ['fille', 'photo', 'chatte'], note: 'like “f” in “fine”.' },
+      { ipa: 'v', letters: 'v', words: ['vous', 'verre', 'vive'], note: 'like “v” in “very”.' },
+      { ipa: 'l', letters: 'l', words: ['livre', 'aller', 'table'], note: 'like “l”, always clear (no dark l).' }
+    ]
+  },
+  {
+    group: 'Sons liés', tip: 'Special connections between words.',
+    items: [
+      { ipa: 'liaison', letters: 'consonants between vowels', words: ['les amis', 'nous avons', 'un ami'], note: 'silent final consonant becomes pronounced before a vowel.' },
+      { ipa: 'h muet', letters: 'h', words: ['l’homme', 'les hôtels'], note: 'silent h acts like no consonant — liaison and elision apply.' }
+    ]
+  }
+];
+
+function showPhonetics() {
+  hideAllMainViews();
+  $('phonetics-view').hidden = false;
+  document.documentElement.classList.remove('view-home');
+  clearNavActive();
+  $('phonetics-button')?.classList.add('active');
+  closeMobileLibrary();
+  state.view = 'phonetics';
+  document.title = 'Phonétique · Le Petit Atelier Français';
+  renderPhonetics();
+}
+
+function renderPhonetics() {
+  const sections = PHONEMES.map(group => `
+    <section class="library-collection">
+      <div class="library-col-head"><span class="library-emoji">🔤</span><div><h3>${escapeHtml(group.group)}</h3><p>${escapeHtml(group.tip || '')}</p></div><span class="mini-stat">${group.items.length}</span></div>
+      <div class="phoneme-grid">${group.items.map(sound => `
+        <article class="phoneme-card">
+          <div class="phoneme-head"><span class="phoneme-ipa">/${sound.ipa}/</span><div><b>${escapeHtml(sound.letters)}</b></div>
+          <button class="speak-button" type="button" data-sound-example="${escapeHtml(sound.words.join(' '))}" aria-label="Pronounce ${escapeHtml(sound.ipa)}" title="Pronounce">🔊</button></div>
+          <div class="phoneme-words">${sound.words.map(word => `<button class="phoneme-word" type="button" data-sound-word="${escapeHtml(word)}">${escapeHtml(word)}</button>`).join('<span>·</span>')}</div>
+          <p class="phoneme-note">${escapeHtml(sound.note)}</p>
+        </article>`).join('')}</div>
+    </section>`).join('');
+  $('phonetics-view').innerHTML = `
+    <header class="wordlist-hero">
+      <div><span class="kicker">Phonétique</span>
+      <h2>The sounds of French</h2>
+      <p>Every phoneme with the letters that spell it, examples to hear — and what to watch for. Tap 🔊 to listen.</p></div>
+      <div class="wordlist-stats"><div class="wordlist-stat"><small>Sound groups</small><b>${PHONEMES.length}</b></div><div class="wordlist-stat"><small>Phonemes</small><b>${PHONEMES.reduce((sum, g) => sum + g.items.length, 0)}</b></div></div>
+    </header>
+    <div class="library-list">${sections}</div>`;
+  $('phonetics-view').querySelectorAll('[data-sound-word]').forEach(button => button.addEventListener('click', () => speak(button.dataset.soundWord, button)));
+  $('phonetics-view').querySelectorAll('[data-sound-example]').forEach(button => button.addEventListener('click', event => speak(button.dataset.soundExample, event.currentTarget)));
 }
 
 async function loadLesson(item, requestedTab = null) {
@@ -1930,7 +2110,7 @@ function countDistribution(values) {
 function showDashboard() {
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = false;
-  $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true;
+  $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true; $('phonetics-view').hidden = true;
   $('wordlist-view').hidden = true; $('review-view').hidden = true;
   document.documentElement.classList.remove('view-home');
   $('dashboard-button').classList.add('active'); closeMobileLibrary(); renderDashboard(); renderLibrary();
@@ -1985,7 +2165,7 @@ function recordReview(word, quality) {
 function showWordList() {
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = true;
-  $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true;
+  $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true; $('phonetics-view').hidden = true;
   $('wordlist-view').hidden = false; $('review-view').hidden = true;
   document.documentElement.classList.remove('view-home');
   document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
@@ -2186,7 +2366,7 @@ function reviewQueue(filter = state.reviewFilter) {
 function showReview() {
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = true;
-  $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true;
+  $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true; $('phonetics-view').hidden = true;
   $('wordlist-view').hidden = true; $('review-view').hidden = false;
   document.documentElement.classList.remove('view-home');
   document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
@@ -2527,6 +2707,7 @@ $('wordlist-button').addEventListener('click', () => { location.hash = 'view=wor
 $('review-button').addEventListener('click', () => { location.hash = 'view=review'; });
 $('library-button')?.addEventListener('click', () => { location.hash = 'view=library'; });
 $('practice-button')?.addEventListener('click', () => { location.hash = 'view=practice'; });
+$('phonetics-button')?.addEventListener('click', () => { location.hash = '#phonetics'; });
 $('theme-button').addEventListener('click', () => { const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; localStorage.setItem('atelier-theme', next); $('theme-button').textContent = next === 'dark' ? '☀' : '☾'; });
 $('reset-lesson').addEventListener('click', () => { localStorage.removeItem(progressKey()); state.cardIndex = 0; state.cardRevealed = false; updateProgress(); renderActiveTab(); });
 $('retry-button').addEventListener('click', loadManifest);
@@ -2538,6 +2719,7 @@ window.addEventListener('hashchange', async () => {
   if (route.view === 'review') { showReview(); return; }
   if (route.view === 'library') { showLibrary(); return; }
   if (route.view === 'practice') { showPractice(); return; }
+  if (route.view === 'phonetics') { showPhonetics(); return; }
   if (route.view === 'reader' && route.file) { showReader(route.file, route.type); return; }
   if (route.view === 'home') { showHome(); return; }
   if (route.wordlistFilter) state.wordlistFilter = route.wordlistFilter;
