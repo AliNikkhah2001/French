@@ -391,6 +391,8 @@ html.is-standalone .home-stat b { font-size: 1.7rem; }
 .lookup-row { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .word-link { cursor: pointer; border-bottom: 1px dotted var(--blue-2); }
 .word-link:hover { background: color-mix(in srgb, var(--blue) 10%, transparent); }
+.inline-word { cursor: pointer; border-bottom: 1px dotted color-mix(in srgb, var(--blue-2) 55%, transparent); border-radius: 2px; }
+.inline-word:hover { background: rgba(245, 200, 75, .45); }
 .speak-button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--hairline); background: var(--paper); color: var(--blue-2); cursor: pointer; font-size: .78rem; }
 html.is-standalone .speak-button { width: 38px; height: 38px; font-size: .9rem; }
 .speak-button:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
@@ -643,6 +645,16 @@ html[data-theme="dark"] .epub-section { color: var(--ink); }
 .roadmap-xp { margin-left: auto; font-weight: 900; color: var(--gold); font-size: .85rem; }
 .roadmap-level .mastery-track { margin: 10px 0; }
 .roadmap-formats { color: var(--muted); font-size: .7rem; margin-bottom: 10px; }
+
+/* ---------- Practice history ---------- */
+.history-list { display: grid; gap: 10px; margin-top: 20px; }
+.history-round { border: 1px solid var(--hairline); border-radius: 14px; background: var(--paper); padding: 12px 14px; }
+.history-head { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; font-weight: 800; }
+.history-head::-webkit-details-marker { display: none; }
+.history-head span:first-child { color: var(--muted); font-weight: 600; }
+.history-score { margin-left: auto; color: var(--blue-2); }
+.history-items { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.history-round .button.small { margin-top: 10px; }
 .practice-modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 20px; }
 .practice-mode { display: flex; align-items: center; gap: 11px; border: 1px solid var(--hairline); border-radius: 14px; padding: 13px 14px; background: var(--paper); color: var(--ink); text-align: left; cursor: pointer; box-shadow: var(--soft-shadow); transition: border-color .18s ease, box-shadow .18s ease; }
 .practice-mode:hover { border-color: var(--blue-2); }
@@ -662,9 +674,12 @@ html[data-theme="dark"] .epub-section { color: var(--ink); }
 .matching-status { grid-column: 1 / -1; font-size: .9rem; font-weight: 800; }
 .matching-status.ok { color: #4b9c73; }
 .matching-status.bad { color: var(--red); }
-.match-chip { border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px; background: var(--paper); color: var(--ink); font: inherit; text-align: left; cursor: pointer; font-size: .9rem; }
+.match-chip { border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px; background: var(--paper); color: var(--ink); font: inherit; text-align: left; cursor: pointer; font-size: .9rem; transition: background .18s ease, border-color .18s ease, color .18s ease; }
 .match-chip:hover { border-color: var(--blue); }
-.match-chip.selected { border-color: var(--blue); background: var(--blue-soft); }
+.match-chip.selected { border-color: var(--blue); background: var(--blue-soft); box-shadow: inset 0 0 0 1px var(--blue); }
+.match-chip.matched.ok { border-color: #2f8f5b; background: #2f8f5b; color: #fff; cursor: default; }
+.match-chip.wrong { border-color: var(--red); background: color-mix(in srgb, var(--red) 22%, var(--paper)); color: var(--red-dark); }
+.match-chip:disabled { cursor: default; }
 .practice-done { text-align: center; padding: 34px 20px; border: 1px solid var(--hairline); border-radius: 16px; background: var(--paper); box-shadow: var(--soft-shadow); }
 .practice-done span { font-size: 2.4rem; display: block; margin-bottom: 6px; }
 .practice-done b { font-size: 1.3rem; }

@@ -458,7 +458,7 @@ function renderLibraryView() {
       <div class="library-docs">${items.map(doc => libraryDocCard(doc)).join('')}</div>`).join('');
     return `<section class="library-collection">
       <div class="library-col-head"><span class="library-emoji">${escapeHtml(collection.emoji)}</span><div><h3>${escapeHtml(collection.label)}</h3><p>${escapeHtml(collection.blurb)}</p></div><span class="mini-stat">${collection.items.length}</span></div>
-      ${lessonItems.length ? `<div class="library-lessons">${lessonItems.map(item => libraryLessonCard(item)).join('')}</div>` : ''}
+      ${lessonItems.length ? renderLibraryLessons(lessonItems) : ''}
       ${docBlocks}
     </section>`;
   }).join('') || '<div class="empty-section">No library content yet.</div>';
@@ -484,6 +484,18 @@ function libraryLessonCard(item) {
   const detail = [titleCase(item.type), item.level, item.duration].filter(Boolean).join(' · ');
   const progress = lessonProgress(item);
   return `<button class="library-item" type="button" data-open-lesson="${escapeHtml(item.slug)}"><span class="library-item-emoji">${escapeHtml(item.emoji)}</span><span><b>${escapeHtml(item.title)}</b><small>${escapeHtml(detail)}${item.has_audio ? ' · 🔊' : ''}</small>${progress > 0 ? `<span class="card-progress"><i style="width:${progress}%"></i></span>` : ''}</span><span class="lesson-arrow">›</span></button>`;
+}
+
+function renderLibraryLessons(lessonItems) {
+  const groups = new Map();
+  lessonItems.forEach(item => {
+    const series = item.series || 'Lessons';
+    if (!groups.has(series)) groups.set(series, []);
+    groups.get(series).push(item);
+  });
+  return [...groups.entries()].map(([series, items]) => `
+    <h4 class="library-section">${escapeHtml(series)} <span>${items.length}</span></h4>
+    <div class="library-lessons">${items.map(item => libraryLessonCard(item)).join('')}</div>`).join('');
 }
 
 function libraryDocCard(doc) {
@@ -1128,6 +1140,8 @@ let practiceLevel = 'A1';
 let practiceRetryQueue = null;
 
 const ROADMAP_KEY = 'atelier-roadmap-v1';
+const ANSWERED_KEY = 'atelier-practice-ledger-v1';
+const HISTORY_KEY = 'atelier-practice-history-v1';
 
 const PRACTICE_DIFFICULTY = {
   easy: ['mc', 'matching', 'typing'],
@@ -1160,26 +1174,25 @@ const PRACTICE_MODES = [
 ];
 
 function practicePool() {
+  let words = [];
   if (practiceSource === 'bank' && state.vocab?.levels?.[practiceLevel]) {
-    return state.vocab.levels[practiceLevel].map(word => ({
-      french: word.f,
-      english: word.e,
-      type: word.pos || 'vocab'
-    }));
-  }
-  if (practiceSource === 'lesson' && state.lesson?.vocabulary?.length) {
-    return state.lesson.vocabulary.map(word => ({
+    words = state.vocab.levels[practiceLevel].map(word => ({ french: word.f, english: word.e, type: word.pos || 'vocab' }));
+  } else if (practiceSource === 'lesson' && state.lesson?.vocabulary?.length) {
+    words = state.lesson.vocabulary.map(word => ({
       french: (word.french || '').replace(/<[^>]+>/g, '').split('/')[0].trim(),
       english: word.english || '',
       type: word.type || 'vocab'
     })).filter(word => word.french);
+  } else {
+    const myWords = getWordList();
+    if (myWords.length >= 6) {
+      words = myWords.map(word => ({ french: word.french, english: word.english || '', type: word.type || 'vocab' }));
+    } else {
+      const fromAnalytics = state.analytics?.entities?.vocabulary || [];
+      words = shuffle(fromAnalytics.map(entity => ({ french: entity.french, english: entity.english, type: entity.type }))).slice(0, 40);
+    }
   }
-  const words = getWordList();
-  if (words.length >= 6) {
-    return words.map(word => ({ french: word.french, english: word.english || '', type: word.type || 'vocab' }));
-  }
-  const fromAnalytics = state.analytics?.entities?.vocabulary || [];
-  return shuffle(fromAnalytics.map(entity => ({ french: entity.french, english: entity.english, type: entity.type }))).slice(0, 40);
+  return unmasteredPool(words);
 }
 
 function practiceLines() {
@@ -1332,7 +1345,7 @@ function renderPracticeHero(stats, todayRounds) {
         <div class="practice-stat"><small>Best round</small><b>${stats.best}%</b></div>
         <div class="practice-stat"><small>Rounds today</small><b>${todayRounds}</b></div>
       </div>
-      <div class="practice-actions"><button class="button blue" id="practice-start" type="button">▶ Start</button><button class="button paper" id="practice-roadmap" type="button">🗺️ Roadmap</button><button class="button paper" id="practice-reset" type="button">Reset stats</button></div>
+      <div class="practice-actions"><button class="button blue" id="practice-start" type="button">▶ Start</button><button class="button paper" id="practice-roadmap" type="button">🗺️ Roadmap</button><button class="button paper" id="practice-history" type="button">📜 History</button><button class="button paper" id="practice-reset" type="button">Reset stats</button></div>
     </header>
     <div class="practice-source">
       <span class="kicker" style="margin-right:10px">Source</span>
@@ -1373,6 +1386,7 @@ function renderPracticeHero(stats, todayRounds) {
   }));
   $('practice-start').addEventListener('click', () => startPractice(practiceMode));
   $('practice-roadmap').addEventListener('click', () => renderRoadmap());
+  $('practice-history').addEventListener('click', () => renderPracticeHistory());
   $('practice-reset').addEventListener('click', () => {
     if (confirm('Reset all practice stats?')) { localStorage.removeItem(PRACTICE_KEY); renderPractice(); }
   });
@@ -1413,6 +1427,43 @@ function renderRoadmap() {
   }));
   $('roadmap-practice').addEventListener('click', () => { practiceSource = 'bank'; renderPractice(); startPractice('mixed'); });
   $('roadmap-back').addEventListener('click', () => renderPractice());
+}
+
+function renderPracticeHistory() {
+  const history = practiceHistory();
+  const rounds = history.map((round, index) => {
+    const date = new Date(round.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const items = round.items.map((item, i) => {
+      const ok = item.correct === true;
+      const q = item.question || {};
+      const user = escapeHtml(item.userAnswer || '(no answer)');
+      const correctText = q.type === 'matching' ? 'all matching pairs' : escapeHtml(q.answer || '');
+      return `<li class="review-row ${ok ? 'ok' : 'bad'}"><span class="review-mark">${ok ? '✓' : '✗'}</span><div><b>${inlineMarkdown(q.question || q.prompt || '')}</b><small class="review-user">You: ${user}</small>${ok ? '' : `<small class="review-correct">Answer: ${correctText}</small>`}</div></li>`;
+    }).join('');
+    return `<details class="history-round" ${index === 0 ? 'open' : ''}>
+      <summary class="history-head"><span>${date}</span><span>${escapeHtml(round.mode)}${round.source === 'bank' ? ` · ${round.level}` : ''}</span><span class="history-score">${round.correct}/${round.total} · ${round.pct}%</span></summary>
+      <ol class="history-items">${items || '<li>No items.</li>'}</ol>
+      ${round.total - round.correct > 0 ? `<button class="button red small" type="button" data-redo-round="history-${index}">↺ Redo ${round.total - round.correct} missed</button>` : ''}
+    </details>`;
+  }).join('') || '<div class="empty-section">No practice history yet — finish a round to see it here.</div>';
+  $('practice-view').innerHTML = `
+    <header class="wordlist-hero">
+      <div><span class="kicker">Historique</span><h2>Done exams &amp; practice</h2>
+      <p>Completed rounds with your answers. Words you answered correctly are not asked again — you only see review &amp; mistakes here.</p></div>
+      <div class="dashboard-actions"><button class="button paper" id="history-back" type="button">← Back to practice</button></div>
+    </header>
+    <div class="history-list">${rounds}</div>`;
+  $('practice-view').querySelectorAll('[data-redo-round]').forEach(button => {
+    const index = Number(button.dataset.redoRound.replace('history-', ''));
+    button.addEventListener('click', () => {
+      const round = history[index];
+      if (!round) return;
+      practiceRetryQueue = round.items.filter(item => item.correct !== true).map(item => ({ ...item.question }));
+      renderPractice();
+      startPractice('mixed');
+    });
+  });
+  $('history-back').addEventListener('click', () => renderPractice());
 }
 
 async function startPractice(mode) {
@@ -1520,28 +1571,50 @@ function speakInline(text) {
 }
 
 function renderMatching(container, question) {
-  const left = shuffle(question.pairs.map(pair => ({ key: pair.fr, label: pair.fr, pair: pair.en })));
-  const right = shuffle(question.pairs.map(pair => ({ label: pair.en, pair: pair.fr })));
-  const chosen = { fr: null, en: null };
-  container.innerHTML = `<div class="matching-col" id="m-left">${left.map((item, i) => `<button class="match-chip" type="button" data-side="fr" data-index="${i}">${escapeHtml(item.label)}</button>`).join('')}</div><div class="matching-col" id="m-right">${right.map((item, i) => `<button class="match-chip" type="button" data-side="en" data-index="${i}">${escapeHtml(item.label)}</button>`).join('')}</div><div class="matching-status" id="m-status"></div>`;
-  const chipped = {};
-  const mark = () => {
-    container.querySelectorAll('.match-chip').forEach(btn => btn.classList.toggle('selected', chipped[btn.dataset.side] === Number(btn.dataset.index)));
-  };
+  const pairs = question.pairs;
+  const left = shuffle(pairs.map((pair, i) => ({ id: i, label: pair.fr, pair: pair.en })));
+  const right = shuffle(pairs.map((pair, i) => ({ id: i, label: pair.en, pair: pair.fr })));
+  question.__matched = 0;
+  container.dataset.done = '0';
+  const sel = { fr: null, en: null };
+  const byId = (side, id) => container.querySelector(`.match-chip[data-side="${side}"][data-id="${id}"]`);
+  container.innerHTML = `
+    <div class="matching-col">${left.map(i => `<button class="match-chip" type="button" data-side="fr" data-id="${i.id}">${escapeHtml(i.label)}</button>`).join('')}</div>
+    <div class="matching-col">${right.map(i => `<button class="match-chip" type="button" data-side="en" data-id="${i.id}">${escapeHtml(i.label)}</button>`).join('')}</div>
+    <div class="matching-status" id="m-status">Tap a French word, then its meaning. Correct pairs lock green.</div>`;
+  const status = container.querySelector('#m-status');
+  const markSel = () => container.querySelectorAll('.match-chip').forEach(b => b.classList.toggle('selected', sel[b.dataset.side] === Number(b.dataset.id) && !b.classList.contains('matched')));
   container.querySelectorAll('.match-chip').forEach(btn => btn.addEventListener('click', () => {
+    if (btn.classList.contains('matched')) return;
     const side = btn.dataset.side;
-    chipped[side] = Number(btn.dataset.index);
-    mark();
-    if (chipped.fr !== undefined && chipped.en !== undefined) {
-      const fr = left[chipped.fr];
-      const en = right[chipped.en];
-      const ok = fr.pair === en.label;
-      const status = container.querySelector('#m-status');
-      status.textContent = ok ? `✓ “${fr.pair}” matches.` : `✗ “${fr.label}” is “${fr.pair}”, not “${en.label}”.`;
-      status.className = 'matching-status ' + (ok ? 'ok' : 'bad');
-      container.dataset.lastOk = ok;
-      chipped.fr = chipped.en = undefined;
-      mark();
+    sel[side] = sel[side] === Number(btn.dataset.id) ? null : Number(btn.dataset.id);
+    markSel();
+    if (sel.fr !== null && sel.en !== null) {
+      if (sel.fr === sel.en) {
+        byId('fr', sel.fr).classList.add('matched', 'ok');
+        byId('en', sel.en).classList.add('matched', 'ok');
+        question.__matched += 1;
+        status.className = 'matching-status ok';
+        status.textContent = question.__matched === pairs.length ? '✓ Tout est correct ! All matched!' : `✓ ${question.__matched}/${pairs.length} matched`;
+        sel.fr = sel.en = null;
+        markSel();
+        if (question.__matched === pairs.length) {
+          container.dataset.done = '1';
+          const check = $('practice-check');
+          if (check) check.disabled = false;
+        }
+      } else {
+        const fr = left.find(l => l.id === sel.fr);
+        const en = right.find(r => r.id === sel.en);
+        byId('fr', sel.fr).classList.add('wrong');
+        byId('en', sel.en).classList.add('wrong');
+        status.className = 'matching-status bad';
+        status.textContent = `✗ “${fr.label}” is “${fr.pair}”, not “${en.label}”.`;
+        const tempF = sel.fr; const tempE = sel.en;
+        sel.fr = sel.en = null;
+        markSel();
+        setTimeout(() => { byId('fr', tempF).classList.remove('wrong'); byId('en', tempE).classList.remove('wrong'); }, 700);
+      }
     }
   }));
 }
@@ -1552,7 +1625,7 @@ function gradeAnswerValue(question, element) {
     return selected ? question.options[Number(selected.value)].correct : false;
   }
   if (question.type === 'matching') {
-    return element.querySelector('.matching-status')?.classList.contains('ok') ? true : false;
+    return element.dataset.done === '1';
   }
   if (question.type === 'order') {
     const words = [...element.querySelectorAll('.order-target .order-chip')].map(node => node.textContent.trim()).join(' ');
@@ -1568,30 +1641,86 @@ function gradeAnswerValue(question, element) {
   return false;
 }
 
+function expectedAnswerText(question) {
+  let expected = '';
+  if (question.type === 'mc') expected = question.answer;
+  else if (question.type === 'matching') expected = '';
+  else if (question.type === 'order' || question.type === 'fill' || question.type === 'spoken' || question.type === 'grammar') expected = question.answer;
+  return expected || 'Try again.';
+}
+
 function checkPractice() {
   const question = practiceQuestions[practiceIndex];
   const field = document.querySelector('.practice-question');
+  const check = $('practice-check');
   const isCorrect = gradeAnswerValue(question, field);
-  field.classList.add(isCorrect ? 'correct' : 'incorrect');
   const feedback = field.querySelector('.question-feedback');
+  if (!isCorrect && question.type === 'matching') {
+    field.classList.remove('correct', 'incorrect');
+    if (feedback) { feedback.hidden = false; feedback.innerHTML = '⚠️ Match all pairs correctly first.'; }
+    return;
+  }
+  recordAnswered(question, isCorrect);
+  field.classList.remove('correct', 'incorrect');
+  field.classList.add(isCorrect ? 'correct' : 'incorrect');
   if (feedback) {
     feedback.hidden = false;
-    let expected = '';
-    if (question.type === 'mc') expected = question.answer;
-    else if (question.type === 'matching') expected = ''; // shown inline
-    else if (question.type === 'order' || question.type === 'fill' || question.type === 'spoken') expected = question.answer;
-    else if (question.type === 'grammar') expected = question.answer;
-    feedback.innerHTML = isCorrect ? '✓ Correct.' : expected ? `The answer: <b>${inlineMarkdown(escapeHtml(expected))}</b>` : 'Try again.';
-    if (isCorrect) recordPracticeCorrect(question.points);
+    feedback.innerHTML = isCorrect ? '✓ Correct.' : `The answer: <b>${inlineMarkdown(escapeHtml(expectedAnswerText(question)))}</b>`;
   }
-  const check = $('practice-check');
+  if (!isCorrect) {
+    check.innerHTML = '↺ Try again';
+    check.onclick = () => checkPractice();
+    return;
+  }
+  recordPracticeCorrect(question.points);
   check.innerHTML = 'Next →';
   check.onclick = () => {
     const userAnswer = capturePracticeAnswer(question);
-    practiceAnswers.push({ q: practiceIndex, correct: isCorrect, userAnswer, question });
-    creditRoadmap(question, isCorrect);
+    practiceAnswers.push({ q: practiceIndex, correct: true, userAnswer, question });
+    creditRoadmap(question, true);
     advancePractice();
   };
+}
+
+function answeredLedger() {
+  try { return JSON.parse(localStorage.getItem(ANSWERED_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function answeredWordKey(wordOrQuestion) {
+  const french = wordOrQuestion?.french || wordOrQuestion?.audio || (wordOrQuestion?.question || '').replace(/<[^>]+>/g, '');
+  return normalizeFrench(french).slice(0, 80);
+}
+
+function recordAnswered(question, isCorrect) {
+  const key = answeredWordKey(question);
+  if (!key) return;
+  const ledger = answeredLedger();
+  const entry = ledger[key] || { ok: false, tries: 0 };
+  entry.tries += 1;
+  if (isCorrect) entry.ok = true;
+  entry.at = Date.now();
+  ledger[key] = entry;
+  localStorage.setItem(ANSWERED_KEY, JSON.stringify(ledger));
+}
+
+function unmasteredPool(pool) {
+  if (!pool.length) return pool;
+  const ledger = answeredLedger();
+  const fresh = pool.filter(word => {
+    const entry = ledger[answeredWordKey(word)];
+    return !entry || !entry.ok;
+  });
+  return fresh.length ? fresh : pool;
+}
+
+function practiceHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+  catch { return []; }
+}
+
+function savePracticeHistory(history) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 20)));
 }
 
 function roadmapStats() {
@@ -1676,6 +1805,19 @@ function finishPractice() {
     return `<li class="review-row ${ok ? 'ok' : 'bad'}"><span class="review-mark">${ok ? '✓' : '✗'}</span><div><b>${inlineMarkdown(question.question || question.prompt || '')}</b><small class="review-user">You: ${user}</small>${ok ? '' : `<small class="review-correct">Answer: ${correctAnswer}</small>`}</div></li>`;
   }).join('');
   const missed = practiceQuestions.filter((_, index) => !(practiceAnswers[index]?.correct === true));
+  const history = practiceHistory();
+  history.unshift({
+    at: Date.now(),
+    mode: practiceMode,
+    source: practiceSource,
+    level: practiceLevel,
+    total, correct, pct,
+    items: practiceQuestions.map((question, index) => {
+      const answer = practiceAnswers[index];
+      return { question, correct: answer?.correct === true, userAnswer: answer?.userAnswer || '' };
+    })
+  });
+  savePracticeHistory(history);
   $('practice-stage').innerHTML = `<div class="practice-done">
     <span>🎉</span><b>Round finished!</b>
     <p>${correct}/${total} correct · <b>${pct}%</b></p>
@@ -1899,6 +2041,7 @@ function renderActiveTab() {
 
 function renderOverview() {
   $('tab-panel').innerHTML = `${sectionHeading('Le point de départ', 'Before you begin', 'Understand the context, then decide what one useful thing you want to remember.')}<div class="rich-copy">${state.lesson.overview}</div>`;
+  wordifyContainer($('tab-panel'), '.rich-copy');
 }
 
 function renderTranscript(query = '') {
@@ -1911,11 +2054,13 @@ function renderTranscript(query = '') {
   $('hide-all').addEventListener('click', () => { const next = getProgress(); next.revealed = []; setProgress(next); renderTranscript(query); });
   $('tab-panel').querySelectorAll('[data-reveal-line]').forEach(button => button.addEventListener('click', () => toggleTranslation(Number(button.dataset.revealLine), query)));
   $('tab-panel').querySelectorAll('[data-speak]').forEach(button => button.addEventListener('click', event => speak(button.dataset.speak, event.currentTarget)));
+  wordifyContainer($('tab-panel'), '.french-line');
 }
 
 function transcriptCard(line, index, revealed) {
   const frenchText = (line.french || '').replace(/<[^>]+>/g, '').trim();
-  return `<article class="transcript-card"><div class="transcript-french"><span class="line-number">${String(index + 1).padStart(2, '0')}</span><div class="french-line">${inlineMarkdown(line.french || '')}<button class="speak-button" type="button" data-speak="${escapeHtml(frenchText)}" aria-label="Pronounce line" title="Pronounce line" style="margin-left:8px;">🔊</button></div><button class="translation-button" type="button" data-reveal-line="${index}" aria-expanded="${revealed}">${revealed ? 'Hide English' : 'Reveal English'}</button></div><div class="transcript-english" ${revealed ? '' : 'hidden'}><p>${inlineMarkdown(line.english || '')}</p>${line.notes ? `<span class="transcript-note">💡 ${inlineMarkdown(line.notes)}</span>` : ''}</div></article>`;
+  const hasEnglish = Boolean((line.english || '').trim());
+  return `<article class="transcript-card"><div class="transcript-french">${hasEnglish ? `<span class="line-number">${String(index + 1).padStart(2, '0')}</span>` : ''}<div class="french-line">${inlineMarkdown(line.french || '')}<button class="speak-button" type="button" data-speak="${escapeHtml(frenchText)}" aria-label="Pronounce line" title="Pronounce line" style="margin-left:8px;">🔊</button></div>${hasEnglish ? `<button class="translation-button" type="button" data-reveal-line="${index}" aria-expanded="${revealed}">${revealed ? 'Hide English' : 'Reveal English'}</button>` : ''}</div>${hasEnglish ? `<div class="transcript-english" ${revealed ? '' : 'hidden'}><p>${inlineMarkdown(line.english || '')}</p>${line.notes ? `<span class="transcript-note">💡 ${inlineMarkdown(line.notes)}</span>` : ''}</div>` : ''}</article>`;
 }
 
 function toggleTranslation(index, query) {
@@ -1930,6 +2075,7 @@ function renderGrammar() {
   const progress = getProgress();
   $('tab-panel').innerHTML = `${sectionHeading('Le laboratoire', 'Grammar you can reuse', 'Open one card, make your own sentence, then mark the pattern learned.', `${progress.learnedGrammar.length}/${state.lesson.grammar.length} learned`)}<div class="grammar-list">${state.lesson.grammar.map((item, index) => { const learned = progress.learnedGrammar.includes(index); return `<details class="grammar-card ${learned ? 'learned' : ''}" ${index === 0 ? 'open' : ''}><summary>${escapeHtml(item.title)}</summary><div class="rich-copy">${item.html}</div><button class="mastery-button ${learned ? 'learned' : ''}" type="button" data-learn-grammar="${index}">${learned ? '✓ Learned' : 'Mark learned'}</button></details>`; }).join('')}</div>`;
   $('tab-panel').querySelectorAll('[data-learn-grammar]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); toggleLearned('learnedGrammar', Number(button.dataset.learnGrammar), renderGrammar, 'grammar'); }));
+  wordifyContainer($('tab-panel'), '.grammar-card .rich-copy');
 }
 
 function toggleLearned(field, index, rerender, activityKind) {
@@ -1979,10 +2125,12 @@ function addLessonWordToList(index) {
 
 function renderCollocations() {
   $('tab-panel').innerHTML = `${sectionHeading('Des mots qui voyagent ensemble', 'Collocations', 'Memorize useful word partnerships as complete chunks.')}<div class="collocation-grid">${state.lesson.collocations.map(item => `<article class="collocation-card"><b>${inlineMarkdown(item.french || '')}</b><span>${inlineMarkdown(item.english || '')}</span><em>${inlineMarkdown(item.example || '')}</em></article>`).join('')}</div>`;
+  wordifyContainer($('tab-panel'), '.collocation-card b');
 }
 
 function renderNotes() {
   $('tab-panel').innerHTML = `${sectionHeading('À ne pas oublier', 'Important notes', 'Pronunciation, culture, and the small details textbooks sometimes hide.')}<div class="notes-board"><div class="rich-copy">${state.lesson.notes}</div></div>`;
+  wordifyContainer($('tab-panel'), '.notes-board .rich-copy');
 }
 
 function renderFlashcards() {
@@ -1999,6 +2147,7 @@ function renderFlashcards() {
   $('reveal-card').addEventListener('click', () => { state.cardRevealed = !state.cardRevealed; renderFlashcards(); });
   $('know-card').addEventListener('click', markCardKnown);
   $('flashcard-speak').addEventListener('click', event => speak(frontText, event.currentTarget));
+  wordifyContainer($('tab-panel'), '.flashcard-content strong');
   $('add-flashcard-list').addEventListener('click', () => {
     const list = getWordList();
     if (list.some(item => normalizeFrench(item.french) === normalizeFrench(frontText))) {
@@ -2515,6 +2664,7 @@ function renderReview() {
   $('review-reveal').addEventListener('click', () => { state.reviewRevealed = !state.reviewRevealed; renderReview(); });
   $('review-skip').addEventListener('click', () => { state.reviewIndex = Math.min(total - 1, state.reviewIndex + 1); state.reviewRevealed = false; renderReview(); });
   $('review-speak').addEventListener('click', event => speak(word.french, event.currentTarget));
+  wordifyContainer(document.querySelector('.review-card-content'), '.french-word');
   $('review-view').querySelectorAll('[data-rv-filter]').forEach(button => button.addEventListener('click', () => {
     state.reviewFilter = button.dataset.rvFilter;
     state.reviewIndex = 0;
@@ -2572,6 +2722,37 @@ function speak(text, button) {
 }
 
 const dictionaryCache = new Map();
+
+function wordifyContainer(el, selector = '') {
+  const roots = selector ? [...el.querySelectorAll(selector)] : [el];
+  roots.forEach(root => {
+    const nodes = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (!node.textContent.trim()) continue;
+      const parent = node.parentElement;
+      if (parent && parent.closest('button, input, textarea, a, select, .epub-word, .inline-word, code, .speak-button')) continue;
+      nodes.push(node);
+    }
+    nodes.forEach(textNode => {
+      const fragment = document.createDocumentFragment();
+      textNode.textContent.split(/([\p{L}\p{M}]+(?:['’\-][\p{L}\p{M}]+)*)/gu).forEach(part => {
+        if (!part) return;
+        if (/^[\p{L}\p{M}]/u.test(part) && part.trim()) {
+          const span = document.createElement('span');
+          span.className = 'inline-word';
+          span.dataset.lookup = part.replace(/[\u0300-\u036f]/g, '').length ? part : part;
+          span.textContent = part;
+          fragment.appendChild(span);
+        } else {
+          fragment.appendChild(document.createTextNode(part));
+        }
+      });
+      textNode.replaceWith(fragment);
+    });
+  });
+}
 
 async function lookupWord(word) {
   const key = normalizeFrench(word);

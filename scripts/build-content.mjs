@@ -378,7 +378,7 @@ async function buildLibrary(records) {
     byId.get(lessonCollection(item)).items.push({
       kind: 'lesson', slug: item.slug, title: item.title, emoji: item.emoji, type: item.type,
       level: item.level, duration: item.duration, author: item.author, description: item.description,
-      path: item.path, has_audio: item.has_audio
+      series: item.series || '', path: item.path, has_audio: item.has_audio
     });
   }
   for (const doc of documents) {
@@ -400,7 +400,7 @@ async function build() {
     const markdown = await materializeTranscript(sourceMarkdown, file, attributes);
     const parsed = parseLesson(markdown);
     validate(attributes, parsed, file, slugs);
-    const item = { title: attributes.title, slug: attributes.slug, type: attributes.type, level: attributes.level, emoji: attributes.emoji || '🇫🇷', description: attributes.description || '', author: attributes.author || '', duration: attributes.duration || '', order: Number(attributes.order ?? 999), tags: Array.isArray(attributes.tags) ? attributes.tags : [], path: publicPath(file), source_url: attributes.source_url || '', apple_url: attributes.apple_url || '', has_audio: Boolean(attributes.audio_url || attributes.audio_embed), counts: { transcript: parsed.transcript.length, vocabulary: parsed.vocabulary.length, grammar: parsed.grammar.length, flashcards: parsed.flashcards.length, exam: parsed.exam.length } };
+    const item = { title: attributes.title, slug: attributes.slug, type: attributes.type, level: attributes.level, emoji: attributes.emoji || '🇫🇷', description: attributes.description || '', author: attributes.author || '', duration: attributes.duration || '', order: Number(attributes.order ?? 999), series: attributes.series || '', tags: Array.isArray(attributes.tags) ? attributes.tags : [], path: publicPath(file), source_url: attributes.source_url || '', apple_url: attributes.apple_url || '', has_audio: Boolean(attributes.audio_url || attributes.audio_embed), counts: { transcript: parsed.transcript.length, vocabulary: parsed.vocabulary.length, grammar: parsed.grammar.length, flashcards: parsed.flashcards.length, exam: parsed.exam.length } };
     records.push({ file, markdown, parsed, item });
   }
   records.sort((a, b) => a.item.order - b.item.order || a.item.title.localeCompare(b.item.title, 'fr'));
