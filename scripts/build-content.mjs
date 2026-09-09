@@ -17,7 +17,123 @@ const contentRoot = join(projectRoot, 'content');
 const addedRoot = join(projectRoot, 'added content');
 const distRoot = join(projectRoot, 'dist');
 const benchmarkPath = join(projectRoot, 'data', 'fr_50k.txt');
+const vocabRoot = join(projectRoot, 'data', 'vocab');
 const checkOnly = process.argv.includes('--check');
+
+const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'];
+
+function levelByPopmotsRank(rank) {
+  if (rank <= 1000) return 'A1';
+  if (rank <= 2500) return 'A2';
+  if (rank <= 5000) return 'B1';
+  if (rank <= 8000) return 'B2';
+  return 'C1';
+}
+
+function levelByIndex(index, div) {
+  const chunk = [1000, 1500, 1500, 1000, Infinity];
+  const sizes = div ? [4, 5, 5] : chunk;
+  const offset = div ? [0, 4, 9] : [0, 0, 0];
+  let acc = 0;
+  for (let l = 0; l < LEVELS.length; l += 1) {
+    const size = div ? sizes[Math.min(l, 2)] : chunk[l];
+    const start = offset[l] || 0;
+    if (index - start < acc + size || l === LEVELS.length - 1) return LEVELS[l];
+    acc += size;
+  }
+  return 'C1';
+}
+
+function stripHtml(value) {
+  return String(value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function popmotsEnglish(entry) {
+  const glosses = entry.senses?.[0]?.glosses || [];
+  return glosses.filter(Boolean).join(' / ') || '';
+}
+
+async function buildVocab() {
+  const merged = new Map();
+  const add = (french, english, level, source, extra = {}) => {
+    const key = normalizeFrench(french);
+    if (!key || !english) return;
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { f: french.trim(), e: english.trim(), lvl: level, src: [source], ...extra });
+      return;
+    }
+    existing.src = existing.src.includes(source) ? existing.src : [...existing.src, source];
+    if (!existing.e || english.trim().length > existing.e.length) existing.e = english.trim();
+    const levelIndex = LEVELS.indexOf(level);
+    if (levelIndex < LEVELS.indexOf(existing.lvl)) existing.lvl = level;
+    if (extra.ipa && !existing.ipa) existing.ipa = extra.ipa;
+    if (extra.pos && !existing.pos) existing.pos = extra.pos;
+  };
+
+  // 1) Duolingo 5000 (pipe pairs)
+  try {
+    const text = (await readFile(join(vocabRoot, 'duolingo_5000.csv'), 'utf8')).replace(/^\uFEFF/, '');
+    const lines = text.split(/\r?\n/).filter(line => line.trim());
+    let index = 0;
+    for (const line of lines) {
+      if (/^french\s*\|/i.test(line.trim())) continue;
+      index += 1;
+      const firstPipe = line.indexOf('|');
+      if (firstPipe < 0) continue;
+      const french = line.slice(0, firstPipe).replace(/^"|"$/g, '').trim();
+      const english = line.slice(firstPipe + 1).replace(/^"|"$/g, '').trim();
+      add(french, english, levelByIndex(index - 1, false), 'duolingo');
+    }
+  } catch { /* optional */ }
+
+  // 2) UFLF chapters (pipe pairs, per-chapter level)
+  try {
+    const files = (await readdir(join(vocabRoot, 'uflf'))).filter(f => f.toLowerCase().endsWith('.txt'));
+    for (const file of files) {
+      const chapterMatch = file.match(/Chapter (\d+)/i);
+      const chapter = chapterMatch ? Number(chapterMatch[1]) : 0;
+      const level = levelByIndex(chapter, true);
+      const text = await readFile(join(vocabRoot, 'uflf', file), 'utf8');
+      for (const line of text.split(/\r?\n/)) {
+        if (!line.trim()) continue;
+        const firstPipe = line.indexOf('|');
+        if (firstPipe < 0) continue;
+        const french = line.slice(0, firstPipe).trim();
+        const english = stripHtml(line.slice(firstPipe + 1));
+        if (french.toLowerCase().startsWith('intro') || /<h[12]/.test(line)) continue;
+        add(french, english, level, 'uflf');
+      }
+    }
+  } catch { /* optional */ }
+
+  // 3) popmots 10k (rank → level, with IPA/POS)
+  try {
+    const data = JSON.parse(await readFile(join(vocabRoot, 'popmots_10k.json'), 'utf8'));
+    for (const [word, entries] of Object.entries(data)) {
+      const entry = entries && entries[0];
+      if (!entry) continue;
+      const english = popmotsEnglish(entry);
+      add(entry.word || word, english, levelByPopmotsRank(Number(entry.rank) || 0), 'popmots', {
+        ipa: entry.ipa || '',
+        pos: entry.category || ''
+      });
+    }
+  } catch { /* optional */ }
+
+  const levels = {};
+  LEVELS.forEach(level => { levels[level] = []; });
+  for (const entry of merged.values()) levels[entry.lvl]?.push(entry);
+  const total = merged.size;
+  return {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    total,
+    levels,
+    levelOrder: LEVELS,
+    byLevel: Object.fromEntries(LEVELS.map(level => [level, (levels[level] || []).length]))
+  };
+}
 const copyLibrary = process.env.BUILD_COPY_LIBRARY === '1';
 
 async function pathExists(file) {
@@ -314,6 +430,9 @@ async function build() {
   await writeFile(join(distRoot, 'data', 'analytics-summary.md'), summaryMarkdown(analytics));
   const library = await buildLibrary(records);
   await writeFile(join(distRoot, 'content', 'library.json'), `${JSON.stringify(library, null, 2)}\n`);
+  const vocab = await buildVocab();
+  await writeFile(join(distRoot, 'data', 'vocab.json'), `${JSON.stringify(vocab, null, 0)}\n`);
+  console.log(`Built ${vocab.total} vocab entries by level: ${Object.entries(vocab.byLevel).map(([l, n]) => `${l}:${n}`).join(' ')}.`);
   if (copyLibrary && (await pathExists(addedRoot))) {
     const destination = join(distRoot, 'added content');
     await rm(destination, { recursive: true, force: true });

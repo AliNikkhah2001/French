@@ -164,6 +164,11 @@ async function loadManifest() {
       const libraryResponse = await siteFetch('content/library.json');
       if (libraryResponse.ok) state.library = await libraryResponse.json();
     } catch { /* library optional */ }
+    try {
+      const vocabResponse = await siteFetch('data/vocab.json');
+      if (vocabResponse.ok) state.vocab = await vocabResponse.json();
+    } catch { /* vocab optional */ }
+    if (state.vocab) console.info(`[Atelier] vocabulary bank ready: ${state.vocab.total} words by ${state.vocab.levelOrder.join(' / ')}`);
     renderTypeFilters();
     renderLibrary();
     const route = readRoute();
@@ -1119,7 +1124,10 @@ let practiceMode = 'mixed';
 let practiceSource = 'words';
 let practiceDifficulty = 'all';
 let practiceLength = 10;
+let practiceLevel = 'A1';
 let practiceRetryQueue = null;
+
+const ROADMAP_KEY = 'atelier-roadmap-v1';
 
 const PRACTICE_DIFFICULTY = {
   easy: ['mc', 'matching', 'typing'],
@@ -1152,6 +1160,13 @@ const PRACTICE_MODES = [
 ];
 
 function practicePool() {
+  if (practiceSource === 'bank' && state.vocab?.levels?.[practiceLevel]) {
+    return state.vocab.levels[practiceLevel].map(word => ({
+      french: word.f,
+      english: word.e,
+      type: word.pos || 'vocab'
+    }));
+  }
   if (practiceSource === 'lesson' && state.lesson?.vocabulary?.length) {
     return state.lesson.vocabulary.map(word => ({
       french: (word.french || '').replace(/<[^>]+>/g, '').split('/')[0].trim(),
@@ -1168,6 +1183,12 @@ function practicePool() {
 }
 
 function practiceLines() {
+  if (practiceSource === 'bank' && state.vocab?.levels?.[practiceLevel]) {
+    return state.vocab.levels[practiceLevel]
+      .map(word => word.f)
+      .filter(phrase => { const words = phrase.split(/\s+/); return words.length >= 3 && words.length <= 8; })
+      .slice(0, 120);
+  }
   if (state.lesson?.transcript?.length) {
     return state.lesson.transcript
       .map(line => (line.french || '').replace(/<[^>]+>/g, '').trim().replace(/[«»“”]/g, ''))
@@ -1270,7 +1291,9 @@ function buildPracticeQuestions(mode) {
 
   if (modes.includes('order')) addOrder();
   if (modes.includes('matching')) addMatchingBatch(sample);
-  return shuffle(questions.filter(q => q.answer || q.pairs)).slice(0, practiceLength);
+  const finalQuestions = shuffle(questions.filter(q => q.answer || q.pairs)).slice(0, practiceLength);
+  if (practiceSource === 'bank') finalQuestions.forEach(q => { q.level = practiceLevel; });
+  return finalQuestions;
 }
 
 function showPractice() {
@@ -1309,14 +1332,19 @@ function renderPracticeHero(stats, todayRounds) {
         <div class="practice-stat"><small>Best round</small><b>${stats.best}%</b></div>
         <div class="practice-stat"><small>Rounds today</small><b>${todayRounds}</b></div>
       </div>
-      <div class="practice-actions"><button class="button blue" id="practice-start" type="button">▶ Start</button><button class="button paper" id="practice-reset" type="button">Reset stats</button></div>
+      <div class="practice-actions"><button class="button blue" id="practice-start" type="button">▶ Start</button><button class="button paper" id="practice-roadmap" type="button">🗺️ Roadmap</button><button class="button paper" id="practice-reset" type="button">Reset stats</button></div>
     </header>
     <div class="practice-source">
       <span class="kicker" style="margin-right:10px">Source</span>
       <button class="word-filter ${practiceSource === 'lesson' ? 'active' : ''}" type="button" data-source="lesson" ${currentLesson ? '' : 'disabled'}>📖 This lesson${currentLesson ? ` — ${escapeHtml(currentLesson.title)}` : ''}</button>
       <button class="word-filter ${practiceSource === 'words' ? 'active' : ''}" type="button" data-source="words">🗒️ My word list</button>
-      <span class="practice-source-hint">${practiceSource === 'lesson' ? `Questions come from “${escapeHtml(currentLesson?.title || 'this lesson')}” (${currentLesson?.type || ''}).` : 'Questions come from every word you added.'}</span>
+      <button class="word-filter ${practiceSource === 'bank' ? 'active' : ''}" type="button" data-source="bank">📍 Vocabulary bank ${state.vocab ? `(${state.vocab.total})` : ''}</button>
+      <span class="practice-source-hint">${practiceSource === 'lesson' ? `Questions come from “${escapeHtml(currentLesson?.title || 'this lesson')}” (${currentLesson?.type || ''}).` : practiceSource === 'bank' ? `Merged word bank from Duolingo, popmots and UFLF — filtered to level ${practiceLevel}.` : 'Questions come from every word you added.'}</span>
     </div>
+    ${practiceSource === 'bank' ? `<div class="practice-source">
+      <span class="kicker" style="margin-right:10px">Level</span>
+      ${['A1', 'A2', 'B1', 'B2', 'C1'].map(level => `<button class="word-filter ${practiceLevel === level ? 'active' : ''}" type="button" data-level="${level}">${level}</button>`).join('')}
+    </div>` : ''}
     <div class="practice-source">
       <span class="kicker" style="margin-right:10px">Difficulty</span>
       ${[['all','Tous'],['easy','Débutant'],['medium','Intermédiaire'],['hard','Avancé']].map(([id, label]) => `<button class="word-filter ${practiceDifficulty === id ? 'active' : ''}" type="button" data-difficulty="${id}">${label}</button>`).join('')}
@@ -1344,9 +1372,47 @@ function renderPracticeHero(stats, todayRounds) {
     renderPractice();
   }));
   $('practice-start').addEventListener('click', () => startPractice(practiceMode));
+  $('practice-roadmap').addEventListener('click', () => renderRoadmap());
   $('practice-reset').addEventListener('click', () => {
     if (confirm('Reset all practice stats?')) { localStorage.removeItem(PRACTICE_KEY); renderPractice(); }
   });
+  $('practice-view').querySelectorAll('[data-level]').forEach(button => button.addEventListener('click', () => {
+    practiceLevel = button.dataset.level;
+    renderPractice();
+  }));
+}
+
+function renderRoadmap() {
+  const stats = roadmapStats();
+  const levels = ['A1', 'A2', 'B1', 'B2', 'C1'];
+  const cards = levels.map(level => {
+    const bank = state.vocab?.levels?.[level] || [];
+    const track = stats[level] || { done: 0, correct: 0, xp: 0 };
+    const accuracy = track.done ? Math.round(track.correct / track.done * 100) : 0;
+    const pct = bank.length ? Math.min(100, Math.round(track.done / bank.length * 100)) : 0;
+    const badge = pct >= 90 ? '🏆' : pct >= 60 ? '⭐' : pct >= 25 ? '🔥' : '🌱';
+    return `<div class="roadmap-level">
+      <div class="roadmap-head"><span class="roadmap-badge">${badge}</span><div><b>${level}</b><small>${track.done}/${bank.length} words · ${accuracy}% accuracy</small></div><span class="roadmap-xp">${track.xp} XP</span></div>
+      <div class="mastery-track"><i style="width:${pct}%"></i></div>
+      <div class="roadmap-formats">all formats · reorder · choice · fill · matching · listen&amp;write</div>
+      <button class="button blue small" type="button" data-practice-level="${level}">Practice ${level} →</button>
+    </div>`;
+  }).join('');
+  $('practice-view').innerHTML = `
+    <header class="wordlist-hero">
+      <div><span class="kicker">Parcours</span><h2>French word roadmap</h2>
+      <p>A1 → C1, from the merged Duolingo · popmots · UFLF bank (${state.vocab?.total || 0} words). Practice each level across every format — the roadmap tracks your words, accuracy and XP.</p></div>
+      <div class="dashboard-actions"><button class="button blue" id="roadmap-practice" type="button">▶ Mixed round</button><button class="button paper" id="roadmap-back" type="button">← Back to practice</button></div>
+    </header>
+    <div class="roadmap">${cards}</div>`;
+  $('practice-view').querySelectorAll('[data-practice-level]').forEach(button => button.addEventListener('click', () => {
+    practiceSource = 'bank';
+    practiceLevel = button.dataset.practiceLevel;
+    renderPractice();
+    startPractice(practiceMode);
+  }));
+  $('roadmap-practice').addEventListener('click', () => { practiceSource = 'bank'; renderPractice(); startPractice('mixed'); });
+  $('roadmap-back').addEventListener('click', () => renderPractice());
 }
 
 async function startPractice(mode) {
@@ -1523,8 +1589,27 @@ function checkPractice() {
   check.onclick = () => {
     const userAnswer = capturePracticeAnswer(question);
     practiceAnswers.push({ q: practiceIndex, correct: isCorrect, userAnswer, question });
+    creditRoadmap(question, isCorrect);
     advancePractice();
   };
+}
+
+function roadmapStats() {
+  try { return JSON.parse(localStorage.getItem(ROADMAP_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function creditRoadmap(question, isCorrect) {
+  if (!question || !question.level) return;
+  const stats = roadmapStats();
+  const level = stats[question.level] || { done: 0, correct: 0, xp: 0 };
+  level.done += 1;
+  if (isCorrect) {
+    level.correct += 1;
+    level.xp += question.points || 10;
+  }
+  stats[question.level] = level;
+  localStorage.setItem(ROADMAP_KEY, JSON.stringify(stats));
 }
 
 function capturePracticeAnswer(question) {

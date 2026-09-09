@@ -29,3 +29,13 @@ The app logo uses the croissant emoji artwork from [Twemoji](https://twemoji.twi
 - License: [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/)
 
 The generated icon set (`assets/icons/*`, `assets/logo.svg`, favicons) is derived from this artwork.
+
+## Vocabulary bank (`data/vocab/`)
+
+The in-app practice vocabulary bank merges three open sources (see `scripts/build-content.mjs — buildVocab`). Each word records its source.
+
+- **Duolingo French–English 5000** — `duolingo_vocabulary_5000.csv`, French↔English word list from [WuqianMa/french-english-word5000](https://github.com/WuqianMa/french-english-word5000).
+- **UFLF fr-en** — 14 chapter vocabulary files (French↔English, phrases/sentences) from [darigovresearch/Universal-Foreign-Language-Flashcards](https://github.com/darigovresearch/Universal-Foreign-Language-Flashcards), derived from the [Français interactif](https://www.laits.utexas.edu/fi/) program.
+- **popmots 10k** — `10000-most-common-words-en-fr-dict.json` (includes IPA and part-of-speech) from [claudiabdm/popmots](https://github.com/claudiabdm/popmots), MIT licensed.
+
+Check each upstream repository for its exact license before redistribution. The Anki shared deck [893324022](https://ankiweb.net/shared/info/893324022) was reviewed but its export could not be downloaded programmatically; add its `.apkg` (or a two-column `french|english` TSV) under `data/vocab/` to include it in the merged bank.
