@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atelier-francais-v8';
+const CACHE_NAME = 'atelier-francais-v9';
 const PRECACHE_URLS = [
   './',
   'index.html',
@@ -56,7 +56,25 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // For assets / content / data: cache-first, network fallback
+  // App content, manifest, library, vocab, analytics: network-first with cache fallback
+  // so lesson/library updates propagate without manual cache resets.
+  if (url.pathname.includes('/content/') || url.pathname.includes('/data/')) {
+    event.respondWith(
+      fetch(request).then(response => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        }
+        return response;
+      }).catch(async () => {
+        const cached = await caches.match(request);
+        return cached || Response.error();
+      })
+    );
+    return;
+  }
+
+  // For static assets: cache-first, network fallback
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached;
