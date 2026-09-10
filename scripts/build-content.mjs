@@ -358,7 +358,7 @@ function lessonCollection(item) {
 async function buildLibrary(records) {
   const collections = [
     { id: 'podcasts', label: 'Podcasts', short: 'Écoutez', emoji: '🎙️', blurb: 'Real French conversations, revealed line by line.', items: [] },
-    { id: 'songs', label: 'Songs', short: 'Chantez', emoji: '🎵', blurb: 'Learn with music — Billy Easton song lessons.', items: [] },
+    { id: 'songs', label: 'Songs', short: 'Chantez', emoji: '🎵', blurb: 'Learn with music — classic French songs and study lessons.', items: [] },
     { id: 'books', label: 'Books', short: 'Lisez', emoji: '📚', blurb: 'Books and bandes dessinées (Camus, Tintin, …) to read and mark.', items: [] },
     { id: 'learning', label: 'French learning books', short: 'Révisez', emoji: '📖', blurb: 'Grammar, vocabulary and exam guides.', items: [] }
   ];
