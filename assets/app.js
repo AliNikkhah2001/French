@@ -1575,7 +1575,8 @@ function renderMatching(container, question) {
   const left = shuffle(pairs.map((pair, i) => ({ id: i, label: pair.fr, pair: pair.en })));
   const right = shuffle(pairs.map((pair, i) => ({ id: i, label: pair.en, pair: pair.fr })));
   question.__matched = 0;
-  container.dataset.done = '0';
+  const field = container.closest('.practice-question');
+  if (field) field.dataset.done = '0';
   const sel = { fr: null, en: null };
   const byId = (side, id) => container.querySelector(`.match-chip[data-side="${side}"][data-id="${id}"]`);
   container.innerHTML = `
@@ -1599,7 +1600,8 @@ function renderMatching(container, question) {
         sel.fr = sel.en = null;
         markSel();
         if (question.__matched === pairs.length) {
-          container.dataset.done = '1';
+          const done = container.closest('.practice-question');
+          if (done) done.dataset.done = '1';
           const check = $('practice-check');
           if (check) check.disabled = false;
         }
@@ -2754,33 +2756,104 @@ function wordifyContainer(el, selector = '') {
   });
 }
 
-async function lookupWord(word) {
-  const key = normalizeFrench(word);
-  if (dictionaryCache.has(key)) return dictionaryCache.get(key);
-  const url = `https://fr.wiktionary.org/api/rest_v1/page/definitions/${encodeURIComponent(key)}`;
-  const fetchPromise = fetch(url, { headers: { Accept: 'application/json' } })
-    .then(async response => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      const fr = (data.fr || data.definitions || []).find(entry => entry.language === 'fr') || data.fr || null;
-      if (!fr || !fr.definitions?.length) throw new Error('No French definition');
+function dictionaryCandidates(word) {
+  const raw = normalizeFrench(word).replace(/[“”«»]/g, '').trim();
+  if (!raw) return [];
+  const bases = { d: 'de', l: 'le', qu: 'que', s: 'se', n: 'ne', c: 'ce', j: 'je', m: 'me', t: 'te' };
+  const candidates = [raw];
+  const apostrophe = raw.indexOf("'");
+  if (apostrophe > 0) {
+    const head = raw.slice(0, apostrophe);
+    const tail = raw.slice(apostrophe + 1);
+    if (tail && !tail.includes("'")) candidates.push(tail);
+    if (bases[head]) candidates.push(bases[head]);
+  } else if (bases[raw]) {
+    candidates.push(bases[raw]);
+  }
+  return [...new Set(candidates)];
+}
+
+function vocabDefinition(candidate) {
+  if (!state.vocab?.levels) return null;
+  const key = normalizeFrench(candidate);
+  for (const words of Object.values(state.vocab.levels)) {
+    const found = words.find(entry => normalizeFrench(entry.f) === key);
+    if (found) {
       return {
-        word: data.title || word,
-        partOfSpeech: fr.partOfSpeech || '',
-        pronunciation: fr.pronunciations?.[0]?.text || data.pronunciations?.[0]?.text || '',
-        definitions: fr.definitions.slice(0, 4).map(d => d.definition || d).filter(Boolean)
+        word: found.f,
+        partOfSpeech: found.pos || '',
+        pronunciation: found.ipa || '',
+        definitions: [found.e].filter(Boolean),
+        bank: true
       };
-    });
-  const fallback = Promise.all([
-    fetch(`https://fr.wiktionary.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=${encodeURIComponent(key)}&format=json&origin=*`).then(r => r.json()).catch(() => null),
-    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(key)}`).catch(() => null)
-  ]).then(([wk, en]) => {
-    const extract = wk?.query?.pages && Object.values(wk.query.pages)[0]?.extract;
-    if (extract) return { word, partOfSpeech: '', pronunciation: '', definitions: [extract.replace(/<[^>]+>/g, ' ').slice(0, 360)] };
+    }
+  }
+  return null;
+}
+
+function cleanWikitextDefinition(value = '') {
+  return String(value)
+    .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\[\[[^\]|]*\|([^\]]+)\]\]/g, '$1')
+    .replace(/\[\[([^\]]+)\]\]/g, '$1')
+    .replace(/\{\{[^{}]*\}\}/g, '')
+    .replace(/'''/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[:*#-]+\s*/, '')
+    .trim();
+}
+
+function parseWikitextFrench(candidate, wikitext = '') {
+  const sectionMatch = wikitext.match(/^==\s*\{\{langue\|fr\}\}\s*==[^\n]*\n([\s\S]*?)(?=^==\s*\{\{langue\|[^}]*\}\}\s*==\s*$|$)/gim);
+  const section = sectionMatch ? sectionMatch[1] : wikitext;
+  const pos = section.match(/\{\{S\|([^}|]+)\|fr/i)?.[1] || '';
+  const pronunciation = section.match(/\{\{pron\|([^}|]+)\|fr\}\}/i)?.[1] || '';
+  const definitions = [];
+  const definitionPattern = /^#\s*(.+)$/gim;
+  let match;
+  while ((match = definitionPattern.exec(section)) && definitions.length < 8) {
+    const line = match[1].trim();
+    if (!line || /^[#:*-]/.test(line)) continue;
+    const cleaned = cleanWikitextDefinition(line);
+    if (cleaned && !definitions.includes(cleaned)) definitions.push(cleaned);
+  }
+  if (!definitions.length) throw new Error('No French definition');
+  return { word: candidate, partOfSpeech: pos, pronunciation, definitions: definitions.slice(0, 4) };
+}
+
+async function fetchWikitextFrench(candidate) {
+  const url = `https://fr.wiktionary.org/w/api.php?action=parse&page=${encodeURIComponent(candidate)}&prop=wikitext&format=json&redirects=1&origin=*`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  if (data?.error) throw new Error(data.error?.info || 'No French definition');
+  const wikitext = data?.parse?.wikitext?.['*'];
+  if (!wikitext) throw new Error('No French definition');
+  return parseWikitextFrench(candidate, wikitext);
+}
+
+async function lookupWord(word) {
+  const raw = normalizeFrench(word);
+  if (!raw) throw new Error('No definition found');
+  if (dictionaryCache.has(raw)) return dictionaryCache.get(raw);
+  const promise = (async () => {
+    for (const candidate of dictionaryCandidates(word)) {
+      const local = vocabDefinition(candidate);
+      if (local) return local;
+      try {
+        return await fetchWikitextFrench(candidate);
+      } catch {
+        continue;
+      }
+    }
+    const summary = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(raw)}`).then(response => (response.ok ? response.json() : null)).catch(() => null);
+    const extract = summary?.extract?.replace(/<[^>]+>/g, ' ').slice(0, 360);
+    if (extract) return { word, partOfSpeech: '', pronunciation: '', definitions: [extract] };
     throw new Error('No definition found');
-  });
-  const promise = fetchPromise.catch(() => fallback);
-  dictionaryCache.set(key, promise);
+  })();
+  dictionaryCache.set(raw, promise);
+  promise.catch(() => dictionaryCache.delete(raw));
   return promise;
 }
 
@@ -2807,6 +2880,7 @@ function openDictionary(target, word) {
     pop.innerHTML = `
       <button class="close" type="button" aria-label="Close">×</button>
       <h4>${escapeHtml(result.word)} <span class="pos">${escapeHtml(result.partOfSpeech || '')}</span></h4>
+      ${result.bank ? '<div class="pronunciation">Local vocabulary bank</div>' : ''}
       ${result.pronunciation ? `<div class="pronunciation">[${escapeHtml(result.pronunciation)}]</div>` : ''}
       <ol>${result.definitions.map(def => `<li>${escapeHtml(def.replace(/<[^>]+>/g, ' ').slice(0, 320))}</li>`).join('')}</ol>
       <div class="source">
@@ -2821,7 +2895,7 @@ function openDictionary(target, word) {
     if (activeDictionary !== pop) return;
     pop.innerHTML = `<button class="close" type="button" aria-label="Close">×</button>
       <h4>${escapeHtml(trimmed)}</h4>
-      <div class="error">Definition not available offline. Try one of the external sources:</div>
+      <div class="error">No definition found for “${escapeHtml(trimmed)}”. Try one of the external sources:</div>
       <div class="source">
         <button class="icon-action" type="button" data-speak="${escapeHtml(trimmed)}">🔊 Pronounce</button>
         <a href="https://youglish.com/pronounce/${encodeURIComponent(trimmed)}/french" target="_blank" rel="noopener">Youglish (French)</a>

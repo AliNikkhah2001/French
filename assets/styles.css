@@ -189,6 +189,7 @@ html.is-standalone .button { min-height: 46px; font-size: .92rem; }
 .transcript-list { display: grid; gap: 10px; }
 .transcript-card { border: 1px solid var(--hairline); border-radius: 14px; background: var(--paper); overflow: hidden; box-shadow: var(--soft-shadow); }
 .transcript-french { padding: 15px 17px; display: grid; grid-template-columns: 35px 1fr auto; gap: 10px; align-items: start; }
+.transcript-french .french-line:only-child { grid-column: 1 / -1; }
 .line-number { color: var(--red-dark); font-weight: 900; font-size: .72rem; padding-top: 3px; }
 .french-line { font-weight: 720; font-size: 1.04rem; }
 .translation-button { border: 1px solid var(--hairline); background: var(--cream); color: var(--muted); border-radius: 999px; padding: 7px 11px; font-size: .72rem; cursor: pointer; }
