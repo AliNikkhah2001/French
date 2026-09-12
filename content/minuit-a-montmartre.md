@@ -8,6 +8,7 @@ description: "A Paris-at-night lesson for learning on, s’enfuir, Tant pis, and
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "10 min"
 order: 12
+series: "Chansons françaises"
 tags: [music, Paris, Montmartre, night, idioms]
 source_url: "https://www.paroles-musique.com/eng/lyrics-Billy-Easton-Minuit-a-Montmartre-en-translation%2Ct3822513"
 apple_url: ""

@@ -8,6 +8,7 @@ description: "A farewell lesson for imperatives, penser à vs penser de, and emo
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "10 min"
 order: 21
+series: "Chansons françaises"
 tags: [music, farewell, imperative, penser, feelings]
 source_url: "https://www.paroles-musique.com/paroles-Billy-Easton-Au-revoir-mon-amour-lyrics%2Cp16794157"
 apple_url: ""

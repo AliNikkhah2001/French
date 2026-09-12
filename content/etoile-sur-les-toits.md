@@ -8,6 +8,7 @@ description: "A night-time lesson for inversion, imperatives, comme si, and dawn
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "10 min"
 order: 16
+series: "Chansons françaises"
 tags: [music, night, Paris, imperative, inversion]
 source_url: "https://www.paroles-musique.com/paroles-Billy-Easton-Etoile-sur-les-toits-lyrics%2Cp16793633"
 apple_url: ""

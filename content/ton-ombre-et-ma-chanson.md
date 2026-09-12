@@ -8,6 +8,7 @@ description: "A memory-and-return lesson for rattraper, si + présent → futur,
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "10 min"
 order: 20
+series: "Chansons françaises"
 tags: [music, memory, future, Paris, return]
 source_url: "https://www.paroles-musique.com/eng/lyrics-Billy-Easton-Ton-ombre-et-ma-chanson-en-translation%2Ct3822531"
 apple_url: ""

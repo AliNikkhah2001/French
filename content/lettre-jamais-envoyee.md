@@ -8,6 +8,7 @@ description: "A letter-themed lesson for learning jamais, oser, retenir, and hyp
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "10 min"
 order: 13
+series: "Chansons françaises"
 tags: [music, letter, feelings, conditional, writing]
 source_url: "https://music.amazon.com/tracks/B0GWRZ4B8Q"
 apple_url: ""

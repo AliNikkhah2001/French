@@ -8,6 +8,7 @@ description: "A Sunday-café lesson for de peur de, au lieu de, and verbs of hes
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "10 min"
 order: 18
+series: "Chansons françaises"
 tags: [music, cafe, expressions, infinitive patterns, feelings]
 source_url: "https://open.spotify.com/track/6UicXXrRn4BkicAwd8aklh"
 apple_url: ""

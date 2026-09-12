@@ -34,7 +34,7 @@ Required fields:
 - `type` — normally `podcast`, `book`, `article`, `video`, or `guide`
 - `level` — for example `A1`, `A1–A2`, or `B1`
 
-Optional fields control labels, links, audio, sorting, and visual identity. A file with `draft: true`, or a filename beginning with `_`, is not published.
+Optional fields control labels, links, audio, sorting, and visual identity. Use `series` for a human-readable grouping label, for example `Chansons françaises`. Song lessons keep `type: "video"` and use `series: "Chansons françaises"`. A file with `draft: true`, or a filename beginning with `_`, is not published.
 
 ## Overview
 

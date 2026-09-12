@@ -8,6 +8,7 @@ description: "Parisian river imagery for learning si + imparfait, relative claus
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "10 min"
 order: 11
+series: "Chansons françaises"
 tags: [music, Paris, Seine, conditional, memory]
 source_url: "https://www.paroles-musique.com/eng/lyrics-Billy-Easton-La-Seine-en-secret-en-translation%2Ct3822474"
 apple_url: ""

@@ -8,6 +8,7 @@ description: "A café-and-lilacs lesson for learning faire semblant de, tant que
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "10 min"
 order: 14
+series: "Chansons françaises"
 tags: [music, cafe, lilacs, idioms, romance]
 source_url: "https://www.paroles-musique.com/traduction-en-Billy-Easton-Rendez-vous-des-lilas-lyrics%2Ct3822463"
 apple_url: ""

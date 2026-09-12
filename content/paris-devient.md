@@ -8,6 +8,7 @@ description: "A poetic Paris lesson for devenir, ne...plus, and city imagery."
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "9 min"
 order: 17
+series: "Chansons françaises"
 tags: [music, Paris, devenir, negation, city]
 source_url: "https://www.qobuz.com/be-fr/album/les-mots-du-dimanche-billy-easton/hc1wltkzumngd"
 apple_url: ""

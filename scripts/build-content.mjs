@@ -378,14 +378,22 @@ async function buildLibrary(records) {
     byId.get(lessonCollection(item)).items.push({
       kind: 'lesson', slug: item.slug, title: item.title, emoji: item.emoji, type: item.type,
       level: item.level, duration: item.duration, author: item.author, description: item.description,
-      series: item.series || '', path: item.path, has_audio: item.has_audio
+      series: item.series || '', order: item.order ?? 999, path: item.path, has_audio: item.has_audio
     });
   }
   for (const doc of documents) {
     const target = byId.get(doc.category);
     target.items.push({ kind: doc.kind, title: doc.title, author: doc.author, section: doc.section, path: doc.path });
   }
-  for (const collection of collections) collection.items.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
+  for (const collection of collections) {
+    const lessons = collection.items
+      .filter(item => item.kind === 'lesson')
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || a.title.localeCompare(b.title, 'fr'));
+    const documents = collection.items
+      .filter(item => item.kind !== 'lesson')
+      .sort((a, b) => a.title.localeCompare(b.title, 'fr'));
+    collection.items = [...lessons, ...documents];
+  }
   return { version: 1, generatedAt: new Date().toISOString(), collections };
 }
 

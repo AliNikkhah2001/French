@@ -8,6 +8,7 @@ description: "A romantic piano song for learning comme si, reflexive verbs, and 
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "10 min"
 order: 10
+series: "Chansons françaises"
 tags: [music, Paris, romance, conditional, reflexive verbs]
 source_url: "https://open.spotify.com/track/2uY8RUbBEtCs1oUZanFi9B"
 apple_url: ""

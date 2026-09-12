@@ -8,6 +8,7 @@ description: "A memory-themed lesson for re- verbs, future tense, and descriptiv
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "10 min"
 order: 19
+series: "Chansons françaises"
 tags: [music, memory, future, Paris, descriptive French]
 source_url: "https://www.paroles-musique.com/eng/Billy-Easton-Au-balcon-des-souvenirs-lyrics%2Cp16793687"
 apple_url: ""

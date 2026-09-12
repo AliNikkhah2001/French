@@ -8,6 +8,7 @@ description: "A gentle café lesson for possessive pronouns, s’en aller, and e
 author: "Billy Easton · study lesson from supplied transcript"
 duration: "9 min"
 order: 15
+series: "Chansons françaises"
 tags: [music, cafe, possessive pronouns, everyday French]
 source_url: "https://www.paroles-musique.com/paroles-Billy-Easton-Un-Cafe-Pour-Deux-lyrics%2Cp16792734"
 apple_url: ""
