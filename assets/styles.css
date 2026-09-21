@@ -188,6 +188,10 @@ html.view-home .mobile-library-button { display: none !important; }
 .lesson-card strong, .lesson-card small { display: block; }
 .lesson-card strong { line-height: 1.2; font-size: .9rem; }
 .lesson-card small { color: var(--muted); font-size: .72rem; margin-top: 5px; }
+.lesson-card.locked { opacity: .55; cursor: not-allowed; pointer-events: none; }
+.lesson-card.locked .lesson-card-emoji { background: var(--line); }
+.lesson-card.current-lesson { border-color: var(--gold); box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 25%, transparent); }
+.library-item.locked { opacity: .55; cursor: not-allowed; pointer-events: none; }
 .lesson-arrow { color: var(--muted); padding-top: 8px; }
 .card-progress { height: 4px; margin-top: 8px; border-radius: 999px; background: var(--cream); overflow: hidden; }
 .card-progress i { display: block; height: 100%; background: var(--gold); border-radius: inherit; }
@@ -483,7 +487,7 @@ html.is-standalone .speak-button { width: 38px; height: 38px; font-size: .9rem; 
 .speak-button.playing { background: var(--red); color: #fff; border-color: var(--red); }
 .speak-button:disabled { opacity: .5; cursor: wait; }
 
-.dictionary-popover { position: absolute; z-index: 50; background: var(--glass-strong); border: 1px solid var(--hairline); border-radius: 14px; box-shadow: var(--shadow); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); padding: 16px; min-width: 280px; max-width: 360px; font-size: .88rem; color: var(--ink); }
+.dictionary-popover { position: absolute; z-index: 50; background: var(--glass-strong); border: 1px solid var(--hairline); border-radius: 14px; box-shadow: var(--shadow); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); padding: 16px; min-width: 280px; max-width: 360px; max-height: 80vh; overflow-y: auto; font-size: .88rem; color: var(--ink); }
 .dictionary-popover h4 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 1.1rem; color: var(--blue-2); display: flex; gap: 8px; align-items: center; }
 .dictionary-popover .pos { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; font-weight: 800; }
 .dictionary-popover .pronunciation { color: var(--muted); font-size: .82rem; margin-bottom: 8px; }
@@ -494,6 +498,14 @@ html.is-standalone .speak-button { width: 38px; height: 38px; font-size: .9rem; 
 .dictionary-popover .close { position: absolute; top: 6px; right: 8px; background: transparent; border: 0; color: var(--muted); font-size: 1.2rem; cursor: pointer; padding: 0 6px; }
 .dictionary-popover .loading { color: var(--muted); font-style: italic; }
 .dictionary-popover .error { color: var(--red); }
+.dict-embed { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--hairline); }
+.dict-embed-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.dict-embed-toggle { appearance: none; border: 1px solid var(--hairline); background: var(--paper); color: var(--ink); border-radius: 8px; padding: 4px 10px; font-size: .72rem; font-weight: 700; cursor: pointer; transition: background .15s, border-color .15s; }
+.dict-embed-toggle:hover { border-color: var(--blue-2); }
+.dict-embed-toggle.active { background: var(--blue-soft); border-color: var(--blue-2); color: var(--blue-2); }
+.dict-embed-link { font-size: .72rem; color: var(--blue-2); text-decoration: none; font-weight: 700; margin-left: auto; }
+.dict-embed-link:hover { text-decoration: underline; }
+.dict-embed-frame iframe { width: 100%; height: 260px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--paper); }
 
 /* ---------- Toast & install ---------- */
 .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); z-index: 70; padding: 13px 18px; border-radius: 12px; background: var(--ink); color: var(--cream); font-size: .86rem; box-shadow: var(--shadow); max-width: 90vw; text-align: center; }
@@ -775,3 +787,34 @@ html[data-theme="dark"] .epub-section { color: var(--ink); }
   .matching-area { grid-template-columns: 1fr; }
   .practice-modes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
+
+.path-hero { background: var(--paper); border: 1px solid var(--hairline); border-radius: 14px; padding: 22px 20px 18px; box-shadow: var(--soft-shadow); margin-bottom: 18px; }
+.path-hero-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.path-hero-emoji { font-size: 2rem; line-height: 1; }
+.path-hero-title { margin: 0; font-size: 1.1rem; }
+.path-hero-level { margin-left: auto; font-size: .78rem; background: var(--blue-soft); color: var(--blue); padding: 3px 10px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+.path-progress-bar { height: 6px; background: var(--hairline); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.path-progress-fill { height: 100%; background: var(--blue); border-radius: 3px; transition: width .4s ease; }
+.path-progress-label { font-size: .8rem; color: var(--muted); margin-bottom: 12px; }
+.path-selector { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; -webkit-overflow-scrolling: touch; }
+.path-selector::-webkit-scrollbar { height: 0; }
+.path-selector-btn { border: 1px solid var(--hairline); border-radius: 10px; padding: 6px 12px; background: var(--paper); cursor: pointer; font: inherit; font-size: .8rem; white-space: nowrap; color: var(--ink); transition: border-color .18s ease, background .18s ease; }
+.path-selector-btn.active { border-color: var(--blue); background: var(--blue-soft); font-weight: 600; }
+.path-selector-btn small { color: var(--muted); margin-left: 4px; }
+.path-lessons { display: flex; flex-direction: column; gap: 8px; }
+.path-lesson-card { display: flex; align-items: center; gap: 12px; border: 1px solid var(--hairline); border-radius: 12px; padding: 12px 14px; background: var(--paper); cursor: pointer; font: inherit; text-align: left; width: 100%; transition: border-color .18s ease, box-shadow .18s ease; }
+.path-lesson-card:hover { border-color: var(--blue); }
+.path-lesson-card.current { border-color: var(--blue); box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 20%, transparent); }
+.path-lesson-card.current .lesson-number { background: var(--blue); color: #fff; }
+.path-lesson-card.upcoming { opacity: .6; }
+.lesson-number { width: 28px; height: 28px; border-radius: 50%; background: var(--hairline); display: flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 700; flex-shrink: 0; }
+.path-done { text-align: center; padding: 14px; font-size: .9rem; color: var(--blue); font-weight: 600; }
+.path-cards { display: flex; flex-direction: column; gap: 10px; }
+.path-card { display: flex; align-items: center; gap: 14px; border: 1px solid var(--hairline); border-radius: 12px; padding: 14px 16px; background: var(--paper); cursor: pointer; font: inherit; text-align: left; width: 100%; box-shadow: var(--soft-shadow); transition: border-color .18s ease; }
+.path-card:hover { border-color: var(--blue); }
+.path-card-emoji { font-size: 1.8rem; line-height: 1; }
+.path-card small { display: block; color: var(--muted); font-size: .8rem; margin-top: 2px; }
+.path-card .card-progress { display: block; margin-top: 6px; }
+.explore-link { text-align: center; margin-top: 14px; }
+.explore-link a { color: var(--blue); font-size: .88rem; font-weight: 600; text-decoration: none; }
+.explore-link a:hover { text-decoration: underline; }

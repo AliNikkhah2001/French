@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "paths": [
+    {
+      "id": "bienvenue",
+      "title": "Bienvenue",
+      "subtitle": "Your first words in French",
+      "emoji": "👋",
+      "description": "Start here. Learn through music, stories, and your first podcast episodes.",
+      "level": "A1–A2",
+      "lessonSlugs": [
+        "une-chanson-revolutionnaire",
+        "french-exams-roadmap",
+        "voila-barbara-pravi",
+        "un-cafe-pour-deux",
+        "episode-1-le-magicien-des-baguettes-the-baguette-magician",
+        "episode-2-entre-deux-mondes-between-two-worlds",
+        "episode-3-partir-du-paradis-leaving-paradise",
+        "episode-5-le-paysan-the-countryman"
+      ]
+    },
+    {
+      "id": "a-lecoute",
+      "title": "À l'écoute",
+      "subtitle": "Train your ear with real stories",
+      "emoji": "🎧",
+      "description": "Curated podcast episodes to build listening comprehension. Each episode is a true French story.",
+      "level": "A2",
+      "lessonSlugs": [
+        "episode-4-le-vigneron-rebelle-the-rebel-winemaker",
+        "episode-6-le-surfeur-sans-limites-the-surfer-without-limits",
+        "episode-8-comment-je-mappelle-whats-my-name",
+        "episode-9-le-pouvoir-du-foot-soccer-power",
+        "episode-14-la-championne-du-fromage-the-cheese-champion",
+        "episode-19-le-top-chef-the-top-chef",
+        "episode-21-trouver-sa-voix-speaking-out",
+        "episode-26-la-joie-du-cancan-the-joy-of-cancan",
+        "episode-29-le-petit-apiculteur-the-beekeeper-kid",
+        "episode-35-la-voix-de-la-france-the-voice-of-france",
+        "episode-44-le-plus-jeune-maire-de-france-the-youngest-mayor-in-france",
+        "episode-51-la-reine-du-codage-the-coding-queen"
+      ]
+    },
+    {
+      "id": "chansons-culture",
+      "title": "Chansons & Culture",
+      "subtitle": "Learn French through music and traditions",
+      "emoji": "🎵",
+      "description": "French songs with grammar breakdowns, plus cultural traditions — perfume, gastronomy, Paris.",
+      "level": "A2–B1",
+      "lessonSlugs": [
+        "je-te-promets-johnny-hallyday",
+        "alors-on-danse-stromae",
+        "confidence-au-piano",
+        "la-seine-en-secret",
+        "minuit-a-montmartre",
+        "lettre-jamais-envoyee",
+        "rendez-vous-des-lilas",
+        "etoile-sur-les-toits",
+        "paris-devient",
+        "les-mots-du-dimanche",
+        "au-balcon-des-souvenirs",
+        "ton-ombre-et-ma-chanson",
+        "au-revoir-mon-amour",
+        "papaoutai-stromae"
+      ]
+    },
+    {
+      "id": "histoires",
+      "title": "Histoires",
+      "subtitle": "Deeper stories, richer French",
+      "emoji": "📖",
+      "description": "Longer, more complex podcast stories. From rebel thieves to Paris hidden corners.",
+      "level": "A2–B1",
+      "lessonSlugs": [
+        "episode-37-etretat-mon-amour-etretat-my-love",
+        "episode-38-lyon-mon-amour-lyon-my-love",
+        "episode-43-une-visite-guidee-du-paris-noir-a-tour-of-black-paris",
+        "episode-52-the-making-of-a-thief-the-rebel-thief-episode-1",
+        "episode-53-the-first-heist-the-rebel-thief-episode-2",
+        "episode-54-the-night-crew-the-rebel-thief-episode-3",
+        "episode-55-to-catch-a-thief-the-rebel-thief-episode-4",
+        "episode-56-the-trial-the-rebel-thief-episode-5",
+        "episode-57-the-final-escape-the-rebel-thief-episode-6",
+        "episode-66-traditions-iconiques-perfume",
+        "episode-67-traditions-iconiques-french-gastronomy",
+        "episode-68-traditions-iconiques-summer-vacation",
+        "episode-70-traditions-iconiques-fete-de-la-musique",
+        "episode-72-traditions-iconiques-the-beret",
+        "episode-73-traditions-iconiques-the-tour-de-france"
+      ]
+    },
+    {
+      "id": "lecture",
+      "title": "Lecture",
+      "subtitle": "Read real French literature",
+      "emoji": "📚",
+      "description": "Tintin adventures, Albert Camus classics, and grammar reference — read, highlight, and look up words.",
+      "level": "B1–B2",
+      "lessonSlugs": [],
+      "bookItems": [
+        "added content/01 - Tintin au pays des Soviets - iranfrench.ir.pdf",
+        "added content/02 - Tintin au Congo - iranfrench.ir.pdf",
+        "added content/03 - Tintin en Amérique - iranfrench.ir.pdf",
+        "added content/05 - Le Lotus Bleu - iranfrench.ir.pdf",
+        "added content/09 - Le Crabe aux Pinces d'or - iranfrench.ir.pdf",
+        "added content/11 - Le Secret de la Licorne - www.iranfrench.ir.pdf",
+        "added content/albert camus www.iranfrench.ir/L'etranger (3522) www.iranfrench.ir.pdf",
+        "added content/albert camus www.iranfrench.ir/La peste (3513) www.iranfrench.ir.pdf",
+        "added content/Grammaire_Progressive_Debutant (+corriges) www.iranfrench.ir.pdf"
+      ]
+    }
+  ]
+}

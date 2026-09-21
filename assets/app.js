@@ -6,9 +6,12 @@ const ACTIVITY_KEY = 'atelier-activity-v1';
 const FREQUENCY_KEY = 'atelier-frequency-known-v1';
 const WORDLIST_KEY = 'atelier-wordlist-v1';
 const LAST_KEY = 'atelier-last-lesson';
+const UNLOCK_KEY = 'atelier-unlocked-lessons';
+const PATH_KEY = 'atelier-active-path';
 const state = {
   manifest: null,
   analytics: null,
+  paths: null,
   type: 'all',
   search: '',
   selected: null,
@@ -115,6 +118,65 @@ function setProgress(progress, slug = state.selected?.slug) {
   if (slug === state.selected?.slug) updateProgress();
 }
 
+function getActivePath() {
+  return localStorage.getItem(PATH_KEY) || 'bienvenue';
+}
+
+function setActivePath(pathId) {
+  localStorage.setItem(PATH_KEY, pathId);
+}
+
+function getPathById(pathId) {
+  return state.paths?.paths?.find(p => p.id === pathId) || null;
+}
+
+function isLessonCompleted(slug) {
+  const progress = getProgress(slug);
+  return progress.quizAttempted === true;
+}
+
+function getPathProgress(pathId) {
+  const path = getPathById(pathId);
+  if (!path) return { completed: 0, total: 0, currentSlug: null, allDone: false };
+  const slugs = path.lessonSlugs || [];
+  let currentSlug = null;
+  let completed = 0;
+  for (let i = 0; i < slugs.length; i += 1) {
+    if (isLessonCompleted(slugs[i])) {
+      completed += 1;
+    } else if (!currentSlug) {
+      currentSlug = slugs[i];
+    }
+  }
+  return { completed, total: slugs.length, currentSlug, allDone: completed === slugs.length };
+}
+
+function getNextPathId(currentPathId) {
+  const paths = state.paths?.paths || [];
+  const idx = paths.findIndex(p => p.id === currentPathId);
+  if (idx < 0 || idx >= paths.length - 1) return null;
+  return paths[idx + 1].id;
+}
+
+function isLessonUnlocked(slug) {
+  const lesson = state.manifest?.lessons?.find(l => l.slug === slug);
+  if (!lesson) return false;
+  if (!lesson.pathId) return true;
+  const path = getPathById(lesson.pathId);
+  if (!path) return true;
+  const pathOrder = lesson.pathOrder ?? 0;
+  if (pathOrder === 0) {
+    const pathIndex = (state.paths?.paths || []).findIndex(p => p.id === path.id);
+    if (pathIndex <= 0) return true;
+    const prevPath = state.paths.paths[pathIndex - 1];
+    return prevPath.lessonSlugs.every(s => isLessonCompleted(s));
+  }
+  const prevSlug = path.lessonSlugs[pathOrder - 1];
+  return prevSlug ? isLessonCompleted(prevSlug) : true;
+}
+
+function unlockNextLesson() { /* path-based locking is derived from completion state */ }
+
 function getActivity() {
   try { return JSON.parse(localStorage.getItem(ACTIVITY_KEY)) || {}; }
   catch { return {}; }
@@ -168,7 +230,12 @@ async function loadManifest() {
       const vocabResponse = await siteFetch('data/vocab.json');
       if (vocabResponse.ok) state.vocab = await vocabResponse.json();
     } catch { /* vocab optional */ }
+    try {
+      const pathsResponse = await siteFetch('content/paths.json');
+      if (pathsResponse.ok) state.paths = await pathsResponse.json();
+    } catch { /* paths optional */ }
     if (state.vocab) console.info(`[Atelier] vocabulary bank ready: ${state.vocab.total} words by ${state.vocab.levelOrder.join(' / ')}`);
+    if (state.paths) console.info(`[Atelier] learning paths ready: ${state.paths.paths.length} paths`);
     renderTypeFilters();
     renderLibrary();
     const route = readRoute();
@@ -267,9 +334,11 @@ function renderLibrary() {
   }
   $('lesson-list').innerHTML = lessons.map(item => {
     const detail = [titleCase(item.type), item.level, item.duration].filter(Boolean).join(' · ');
-    return `<button class="lesson-card ${item.slug === state.selected?.slug && !$('lesson-view').hidden ? 'active' : ''}" type="button" data-slug="${escapeHtml(item.slug)}"><span class="lesson-card-emoji">${escapeHtml(item.emoji)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(detail)}</small></span><span class="lesson-arrow">›</span></button>`;
+    const unlocked = isLessonUnlocked(item.slug);
+    return `<button class="lesson-card ${item.slug === state.selected?.slug && !$('lesson-view').hidden ? 'active' : ''} ${!unlocked ? 'locked' : ''}" type="button" data-slug="${escapeHtml(item.slug)}" ${!unlocked ? 'disabled' : ''}><span class="lesson-card-emoji">${unlocked ? escapeHtml(item.emoji) : '🔒'}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(detail)}</small></span><span class="lesson-arrow">${unlocked ? '›' : ''}</span></button>`;
   }).join('');
   $('lesson-list').querySelectorAll('[data-slug]').forEach(button => button.addEventListener('click', async () => {
+    if (button.disabled) return;
     const item = state.manifest.lessons.find(lesson => lesson.slug === button.dataset.slug);
     if (item) await loadLesson(item);
     closeMobileLibrary();
@@ -304,21 +373,108 @@ function renderHomeFilters() {
 }
 
 function renderHomeLibrary() {
-  const lessons = filteredLessons();
-  $('home-count').textContent = `${lessons.length} ${lessons.length === 1 ? 'lesson' : 'lessons'} on today’s menu`;
-  if (!lessons.length) {
+  if (!state.paths?.paths?.length) {
+    const lessons = filteredLessons();
+    $('home-count').textContent = `${lessons.length} ${lessons.length === 1 ? 'lesson' : 'lessons'} on today’s menu`;
+    if (!lessons.length) {
+      $('home-list').replaceChildren($('empty-library-template').content.cloneNode(true));
+      return;
+    }
+    const sorted = [...lessons].sort((a, b) => (a.order || 0) - (b.order || 0));
+    $('home-list').innerHTML = sorted.map(item => {
+      const detail = [titleCase(item.type), item.level, item.duration].filter(Boolean).join(' · ');
+      const progress = lessonProgress(item);
+      return `<button class="lesson-card" type="button" data-slug="${escapeHtml(item.slug)}"><span class="lesson-card-emoji">${escapeHtml(item.emoji)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(detail)}</small>${progress > 0 ? `<span class="card-progress" aria-label="${progress}% complete" title="${progress}% complete"><i style="width:${progress}%"></i></span>` : ''}<span class="lesson-arrow">›</span></button>`;
+    }).join('');
+    $('home-list').querySelectorAll('[data-slug]').forEach(button => button.addEventListener('click', async () => {
+      if (button.disabled) return;
+      const item = state.manifest.lessons.find(lesson => lesson.slug === button.dataset.slug);
+      if (item) await loadLesson(item);
+    }));
+    return;
+  }
+  const activePathId = getActivePath();
+  const activePath = getPathById(activePathId);
+  if (!activePath) return;
+  const pathLessons = activePath.lessonSlugs.map(slug => state.manifest?.lessons?.find(l => l.slug === slug)).filter(Boolean);
+  $('home-count').textContent = `${pathLessons.length} lessons in ${activePath.title}`;
+  if (!pathLessons.length) {
     $('home-list').replaceChildren($('empty-library-template').content.cloneNode(true));
     return;
   }
-  $('home-list').innerHTML = lessons.map(item => {
+  const firstUnlockedIdx = pathLessons.findIndex(l => isLessonUnlocked(l.slug));
+  $('home-list').innerHTML = pathLessons.map((item, idx) => {
     const detail = [titleCase(item.type), item.level, item.duration].filter(Boolean).join(' · ');
     const progress = lessonProgress(item);
-    return `<button class="lesson-card" type="button" data-slug="${escapeHtml(item.slug)}"><span class="lesson-card-emoji">${escapeHtml(item.emoji)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(detail)}</small>${progress > 0 ? `<span class="card-progress" aria-label="${progress}% complete" title="${progress}% complete"><i style="width:${progress}%"></i></span>` : ''}</span><span class="lesson-arrow">›</span></button>`;
+    const unlocked = isLessonUnlocked(item.slug);
+    const isCurrent = unlocked && idx === firstUnlockedIdx;
+    return `<button class="lesson-card ${!unlocked ? 'locked' : ''} ${isCurrent ? 'current-lesson' : ''}" type="button" data-slug="${escapeHtml(item.slug)}" ${!unlocked ? 'disabled' : ''}><span class="lesson-card-emoji">${unlocked ? escapeHtml(item.emoji) : '🔒'}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(detail)}${!unlocked ? ' — Complete previous lesson to unlock' : ''}${progress > 0 ? `<span class="card-progress" aria-label="${progress}% complete" title="${progress}% complete"><i style="width:${progress}%"></i></span>` : ''}<span class="lesson-arrow">${unlocked ? '›' : ''}</span></button>`;
   }).join('');
   $('home-list').querySelectorAll('[data-slug]').forEach(button => button.addEventListener('click', async () => {
+    if (button.disabled) return;
     const item = state.manifest.lessons.find(lesson => lesson.slug === button.dataset.slug);
     if (item) await loadLesson(item);
   }));
+}
+
+function renderPathHero() {
+  if (!state.paths?.paths?.length) return '';
+  const activePathId = getActivePath();
+  const activePath = getPathById(activePathId);
+  if (!activePath) return '';
+  const progress = getPathProgress(activePathId);
+  const pct = progress.total ? Math.round(progress.completed / progress.total * 100) : 0;
+  const currentLesson = progress.currentSlug ? state.manifest?.lessons?.find(l => l.slug === progress.currentSlug) : null;
+  const pathSelector = state.paths.paths.map(p => {
+    const pProgress = getPathProgress(p.id);
+    const isActive = p.id === activePathId;
+    return `<button class="path-selector-btn ${isActive ? 'active' : ''}" type="button" data-path-id="${escapeHtml(p.id)}">${escapeHtml(p.emoji)} ${escapeHtml(p.title)} <small>${pProgress.completed}/${pProgress.total}</small></button>`;
+  }).join('');
+  const upcomingSlugs = (activePath.lessonSlugs || []).slice(0).filter(s => !isLessonCompleted(s)).slice(0, 3);
+  const upcomingCards = upcomingSlugs.map((slug, idx) => {
+    const lesson = state.manifest?.lessons?.find(l => l.slug === slug);
+    if (!lesson) return '';
+    const isCurrent = idx === 0 && currentLesson;
+    const detail = [titleCase(lesson.type), lesson.level, lesson.duration].filter(Boolean).join(' · ');
+    return `<button class="path-lesson-card ${isCurrent ? 'current' : 'upcoming'}" type="button" data-path-lesson="${escapeHtml(slug)}"><span class="lesson-number">${isCurrent ? '▶' : progress.completed + idx + 1}</span><span><strong>${escapeHtml(lesson.title)}</strong><small>${escapeHtml(detail)}</small></span><span class="lesson-arrow">›</span></button>`;
+  }).join('');
+  return `
+    <section class="path-hero">
+      <div class="path-hero-head">
+        <span class="path-hero-emoji">${escapeHtml(activePath.emoji)}</span>
+        <div>
+          <span class="kicker">${escapeHtml(activePath.subtitle)}</span>
+          <h3 class="path-hero-title">${escapeHtml(activePath.title)}</h3>
+        </div>
+        <span class="path-hero-level">${escapeHtml(activePath.level)}</span>
+      </div>
+      <div class="path-progress-bar"><div class="path-progress-fill" style="width:${pct}%"></div></div>
+      <div class="path-progress-label">${progress.completed} / ${progress.total} lessons completed · ${pct}%</div>
+      <div class="path-selector">${pathSelector}</div>
+      ${progress.allDone ? '<div class="path-done">All lessons in this path completed! 🎉</div>' : ''}
+      ${upcomingCards ? `<div class="path-lessons">${upcomingCards}</div>` : ''}
+    </section>`;
+}
+
+function renderPathLibrary() {
+  if (!state.paths?.paths?.length) {
+    return `<section class="home-library"><h3>La bibliothèque</h3><p>Pick today's adventure — search and filter the lessons, then tap to open.</p><label class="search-box"><span aria-hidden="true">⌕</span><input id="home-search" type="search" value="${escapeHtml(state.search)}" placeholder="Search lessons…" autocomplete="off"></label><div class="filter-scroller" id="home-filters" aria-label="Filter by content type"></div><div class="lesson-count" id="home-count"></div><div class="lesson-list" id="home-list" aria-live="polite"></div></section>`;
+  }
+  const assignedSlugs = new Set(state.paths.paths.flatMap(p => p.lessonSlugs));
+  const unassigned = (state.manifest?.lessons || []).filter(l => !assignedSlugs.has(l.slug));
+  const pathCards = state.paths.paths.map(path => {
+    const progress = getPathProgress(path.id);
+    const pct = progress.total ? Math.round(progress.completed / progress.total * 100) : 0;
+    return `<button class="path-card" type="button" data-goto-path="${escapeHtml(path.id)}"><span class="path-card-emoji">${escapeHtml(path.emoji)}</span><span><strong>${escapeHtml(path.title)}</strong><small>${escapeHtml(path.description)}</small><span class="card-progress"><i style="width:${pct}%"></i></span></span><span class="lesson-arrow">›</span></button>`;
+  }).join('');
+  const exploreCount = unassigned.length;
+  return `
+    <section class="home-library">
+      <h3>Learning paths</h3>
+      <p>Choose a path and follow it lesson by lesson. Each path unlocks the next.</p>
+      <div class="path-cards">${pathCards}</div>
+      ${exploreCount ? `<div class="explore-link"><a href="#view=library">🔍 Explore ${exploreCount} more lessons in the library</a></div>` : ''}
+    </section>`;
 }
 
 function renderHome() {
@@ -366,22 +522,33 @@ function renderHome() {
       <a class="home-shortcut" href="#view=review"><span>🔁</span><div><b>Review</b><small>spaced repetition</small></div></a>
     </div>
     ${continueBlock}
-    <section class="home-library">
-      <h3>La bibliothèque</h3>
-      <p>Pick today’s adventure — search and filter the lessons, then tap to open.</p>
-      <label class="search-box"><span aria-hidden="true">⌕</span><input id="home-search" type="search" value="${escapeHtml(state.search)}" placeholder="Search lessons…" autocomplete="off"></label>
-      <div class="filter-scroller" id="home-filters" aria-label="Filter by content type"></div>
-      <div class="lesson-count" id="home-count"></div>
-      <div class="lesson-list" id="home-list" aria-live="polite"></div>
-    </section>`;
+    ${renderPathHero()}
+    ${renderPathLibrary()}`;
   $('home-search')?.addEventListener('input', event => { state.search = event.target.value; renderHomeLibrary(); });
   $('home-view').querySelectorAll('[data-continue-doc]').forEach(button => button.addEventListener('click', () => {
     location.hash = `view=reader&file=${encodeURIComponent(button.dataset.continueDoc)}&type=${button.dataset.docKind}`;
   }));
   const continueButton = $('home-continue');
   if (continueButton) continueButton.addEventListener('click', async () => { if (lastItem) await loadLesson(lastItem); });
-  renderHomeFilters();
-  renderHomeLibrary();
+  $('home-view').querySelectorAll('[data-path-id]').forEach(button => button.addEventListener('click', () => {
+    setActivePath(button.dataset.pathId);
+    renderHome();
+  }));
+  $('home-view').querySelectorAll('[data-path-lesson]').forEach(button => button.addEventListener('click', async () => {
+    const item = state.manifest.lessons.find(l => l.slug === button.dataset.pathLesson);
+    if (item) await loadLesson(item);
+  }));
+  $('home-view').querySelectorAll('[data-goto-path]').forEach(button => button.addEventListener('click', () => {
+    setActivePath(button.dataset.gotoPath);
+    renderHome();
+  }));
+  if (state.paths?.paths?.length) {
+    renderHomeFilters();
+    renderHomeLibrary();
+  } else {
+    renderHomeFilters();
+    renderHomeLibrary();
+  }
 }
 
 function showHome() {
@@ -448,20 +615,46 @@ function showLibrary() {
 function renderLibraryView() {
   const collections = state.library.collections || [];
   const totalDocs = collections.reduce((sum, collection) => sum + collection.items.filter(item => item.kind !== 'lesson').length, 0);
-  const html = collections.map(collection => {
-    const lessonItems = collection.items.filter(item => item.kind === 'lesson');
+
+  let pathHtml = '';
+  if (state.paths?.paths?.length) {
+    const assignedSlugs = new Set(state.paths.paths.flatMap(p => p.lessonSlugs));
+    const unassigned = (state.manifest?.lessons || []).filter(l => !assignedSlugs.has(l.slug));
+    const pathSections = state.paths.paths.map(path => {
+      const progress = getPathProgress(path.id);
+      const pct = progress.total ? Math.round(progress.completed / progress.total * 100) : 0;
+      const pathLessons = path.lessonSlugs.map(slug => state.manifest?.lessons?.find(l => l.slug === slug)).filter(Boolean);
+      const lessonCards = pathLessons.map(item => libraryLessonCard(item)).join('');
+      return `<section class="library-collection">
+        <div class="library-col-head"><span class="library-emoji">${escapeHtml(path.emoji)}</span><div><h3>${escapeHtml(path.title)}</h3><p>${escapeHtml(path.description)}</p></div><span class="mini-stat">${progress.completed}/${progress.total}</span></div>
+        <div class="path-progress-bar" style="margin:0 16px 10px"><div class="path-progress-fill" style="width:${pct}%"></div></div>
+        <div class="library-lessons">${lessonCards}</div>
+      </section>`;
+    }).join('');
+    if (unassigned.length) {
+      const unassignedCards = unassigned.map(item => libraryLessonCard(item)).join('');
+      pathSections += `<section class="library-collection">
+        <div class="library-col-head"><span class="library-emoji">🔍</span><div><h3>Explore</h3><p>${unassigned.length} lessons not yet assigned to a learning path</p></div><span class="mini-stat">${unassigned.length}</span></div>
+        <div class="library-lessons">${unassignedCards}</div>
+      </section>`;
+    }
+    pathHtml = pathSections;
+  }
+
+  const docHtml = collections.map(collection => {
     const docs = collection.items.filter(item => item.kind !== 'lesson');
     const sections = new Map();
     docs.forEach(doc => { if (!sections.has(doc.section)) sections.set(doc.section, []); sections.get(doc.section).push(doc); });
     const docBlocks = [...sections.entries()].map(([section, items]) => `
       <h4 class="library-section">${escapeHtml(section)} <span>${items.length}</span></h4>
       <div class="library-docs">${items.map(doc => libraryDocCard(doc)).join('')}</div>`).join('');
-    return `<section class="library-collection">
+    return docBlocks ? `<section class="library-collection">
       <div class="library-col-head"><span class="library-emoji">${escapeHtml(collection.emoji)}</span><div><h3>${escapeHtml(collection.label)}</h3><p>${escapeHtml(collection.blurb)}</p></div><span class="mini-stat">${collection.items.length}</span></div>
-      ${lessonItems.length ? renderLibraryLessons(lessonItems) : ''}
       ${docBlocks}
-    </section>`;
-  }).join('') || '<div class="empty-section">No library content yet.</div>';
+    </section>` : '';
+  }).join('');
+
+  const allHtml = pathHtml + docHtml || '<div class="empty-section">No library content yet.</div>';
   $('library-view').innerHTML = `
     <header class="wordlist-hero">
       <div>
@@ -469,10 +662,10 @@ function renderLibraryView() {
         <h2>Your French bookshelf</h2>
         <p>Songs, podcasts, books and grammar guides — lessons to study and PDFs to read and mark.</p>
       </div>
-      <div class="wordlist-stats"><div class="wordlist-stat"><small>Collections</small><b>${collections.length}</b></div><div class="wordlist-stat"><small>Lessons</small><b>${state.manifest.lessons.length}</b></div><div class="wordlist-stat"><small>Readings & PDFs</small><b>${totalDocs}</b></div></div>
+      <div class="wordlist-stats"><div class="wordlist-stat"><small>Paths</small><b>${state.paths?.paths?.length || 0}</b></div><div class="wordlist-stat"><small>Lessons</small><b>${state.manifest.lessons.length}</b></div><div class="wordlist-stat"><small>Readings & PDFs</small><b>${totalDocs}</b></div></div>
     </header>
     ${renderContinueReading()}
-    <div class="library-list">${html}</div>`;
+    <div class="library-list">${allHtml}</div>`;
   $('library-view').querySelectorAll('[data-open-lesson]').forEach(button => button.addEventListener('click', async () => {
     const item = state.manifest.lessons.find(lesson => lesson.slug === button.dataset.openLesson);
     if (item) await loadLesson(item);
@@ -483,7 +676,8 @@ function renderLibraryView() {
 function libraryLessonCard(item) {
   const detail = [titleCase(item.type), item.level, item.duration].filter(Boolean).join(' · ');
   const progress = lessonProgress(item);
-  return `<button class="library-item" type="button" data-open-lesson="${escapeHtml(item.slug)}"><span class="library-item-emoji">${escapeHtml(item.emoji)}</span><span><b>${escapeHtml(item.title)}</b><small>${escapeHtml(detail)}${item.has_audio ? ' · 🔊' : ''}</small>${progress > 0 ? `<span class="card-progress"><i style="width:${progress}%"></i></span>` : ''}</span><span class="lesson-arrow">›</span></button>`;
+  const unlocked = isLessonUnlocked(item.slug);
+  return `<button class="library-item ${!unlocked ? 'locked' : ''}" type="button" data-open-lesson="${escapeHtml(item.slug)}" ${!unlocked ? 'disabled' : ''}><span class="library-item-emoji">${unlocked ? escapeHtml(item.emoji) : '🔒'}</span><span><b>${escapeHtml(item.title)}</b><small>${escapeHtml(detail)}${item.has_audio ? ' · 🔊' : ''}${!unlocked ? ' — Locked' : ''}</small>${progress > 0 ? `<span class="card-progress"><i style="width:${progress}%"></i></span>` : ''}</span><span class="lesson-arrow">${unlocked ? '›' : ''}</span></button>`;
 }
 
 function renderLibraryLessons(lessonItems) {
@@ -2122,7 +2316,31 @@ function addLessonWordToList(index) {
   });
   saveWordList(list);
   recordActivity('word-add');
-  showToast(`Added “${french}” to your list.`, 'success');
+  showToast(`Added "${french}" to your list.`, 'success');
+}
+
+function autoAddLessonWords() {
+  if (!state.lesson?.vocabulary?.length) return;
+  const list = getWordList();
+  const existing = new Set(list.map(w => normalizeFrench(w.french)));
+  let added = 0;
+  for (const word of state.lesson.vocabulary) {
+    const french = (word.french || '').replace(/<[^>]+>/g, '').split('/')[0].trim();
+    if (!french || existing.has(normalizeFrench(french))) continue;
+    existing.add(normalizeFrench(french));
+    list.unshift({
+      id: `word-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      french,
+      english: word.english || '',
+      type: word.type || 'vocab',
+      createdAt: Date.now()
+    });
+    added++;
+  }
+  if (added) {
+    saveWordList(list);
+    showToast(`Added ${added} new word${added === 1 ? '' : 's'} from this lesson to your word list.`, 'success');
+  }
 }
 
 function renderCollocations() {
@@ -2272,7 +2490,26 @@ function checkQuiz() {
     feedback.innerHTML = `${isCorrect ? '✓ Correct.' : `Not quite. The answer is ${shownAnswer}.`} ${inlineMarkdown(question.explanation || '')}`;
   });
   const progress = getProgress(); progress.quizAttempted = true; progress.quizScore = score;
-  recordActivity('exam'); setProgress(progress); $('quiz-score').textContent = `Score: ${score}/${state.lesson.exam.length}`;
+  recordActivity('exam'); setProgress(progress);
+  $('quiz-score').textContent = `Score: ${score}/${state.lesson.exam.length}`;
+  const total = state.lesson.exam.length;
+  const passed = total > 0 && score / total >= 0.5;
+  if (passed && state.selected) {
+    showToast(`Lesson complete! +${score * 10} XP`, 'success');
+    renderHomeLibrary();
+    renderLibrary();
+    if (state.selected.pathId) {
+      const pathProgress = getPathProgress(state.selected.pathId);
+      if (pathProgress.allDone) {
+        const nextPathId = getNextPathId(state.selected.pathId);
+        if (nextPathId) {
+          const nextPath = getPathById(nextPathId);
+          showToast(`Path "${nextPath?.title}" unlocked!`, 'success');
+        }
+      }
+    }
+  }
+  autoAddLessonWords();
 }
 
 function renderExtra(index) {
@@ -2757,10 +2994,12 @@ function wordifyContainer(el, selector = '') {
 }
 
 function dictionaryCandidates(word) {
-  const raw = normalizeFrench(word).replace(/[“”«»]/g, '').trim();
-  if (!raw) return [];
+  const stripped = String(word || '').replace(/[""«»]/g, '').replace(/[\u0300-\u036f]/g, '').trim();
+  const raw = normalizeFrench(word).replace(/[""«»]/g, '').trim();
+  if (!raw && !stripped) return [];
   const bases = { d: 'de', l: 'le', qu: 'que', s: 'se', n: 'ne', c: 'ce', j: 'je', m: 'me', t: 'te' };
-  const candidates = [raw];
+  const candidates = raw ? [raw] : [];
+  if (stripped && stripped !== raw) candidates.push(stripped);
   const apostrophe = raw.indexOf("'");
   if (apostrophe > 0) {
     const head = raw.slice(0, apostrophe);
@@ -2837,27 +3076,37 @@ async function lookupWord(word) {
   const raw = normalizeFrench(word);
   if (!raw) throw new Error('No definition found');
   if (dictionaryCache.has(raw)) return dictionaryCache.get(raw);
-  const promise = (async () => {
-    for (const candidate of dictionaryCandidates(word)) {
-      const local = vocabDefinition(candidate);
-      if (local) return local;
-      try {
-        return await fetchWikitextFrench(candidate);
-      } catch {
-        continue;
-      }
-    }
-    const summary = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(raw)}`).then(response => (response.ok ? response.json() : null)).catch(() => null);
-    const extract = summary?.extract?.replace(/<[^>]+>/g, ' ').slice(0, 360);
-    if (extract) return { word, partOfSpeech: '', pronunciation: '', definitions: [extract] };
-    throw new Error('No definition found');
-  })();
+  const promise = lookupWordInner(word, raw);
   dictionaryCache.set(raw, promise);
   promise.catch(() => dictionaryCache.delete(raw));
   return promise;
 }
 
+async function lookupWordInner(word, raw, attempt = 0) {
+  const MAX_ATTEMPTS = 2;
+  for (const candidate of dictionaryCandidates(word)) {
+    const local = vocabDefinition(candidate);
+    if (local) return local;
+    try {
+      return await fetchWikitextFrench(candidate);
+    } catch {
+      continue;
+    }
+  }
+  try {
+    const summary = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(raw)}`).then(response => (response.ok ? response.json() : null)).catch(() => null);
+    const extract = summary?.extract?.replace(/<[^>]+>/g, ' ').slice(0, 360);
+    if (extract) return { word, partOfSpeech: '', pronunciation: '', definitions: [extract] };
+  } catch { /* ignore */ }
+  if (attempt < MAX_ATTEMPTS) {
+    await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+    return lookupWordInner(word, raw, attempt + 1);
+  }
+  throw new Error('No definition found');
+}
+
 let activeDictionary = null;
+let dictionaryOpenTs = 0;
 
 function openDictionary(target, word) {
   closeDictionary();
@@ -2866,15 +3115,20 @@ function openDictionary(target, word) {
   const rect = target.getBoundingClientRect();
   const pop = document.createElement('div');
   pop.className = 'dictionary-popover';
-  pop.style.top = `${rect.bottom + window.scrollY + 6}px`;
-  pop.style.left = `${Math.min(window.innerWidth - 360, rect.left + window.scrollX)}px`;
+  let top = rect.bottom + window.scrollY + 6;
+  let left = Math.min(window.innerWidth - 370, rect.left + window.scrollX);
+  if (left < 8) left = 8;
+  if (top + 300 > window.scrollY + window.innerHeight) top = rect.top + window.scrollY - 300;
+  pop.style.top = `${top}px`;
+  pop.style.left = `${left}px`;
   pop.innerHTML = `<button class="close" type="button" aria-label="Close">×</button><h4>${escapeHtml(trimmed)}</h4><div class="loading">Looking up definition…</div>`;
   document.body.appendChild(pop);
   activeDictionary = pop;
+  dictionaryOpenTs = Date.now();
   pop.querySelector('.close').addEventListener('click', closeDictionary);
   setTimeout(() => {
-    document.addEventListener('click', outsideClickHandler, { once: true });
-  }, 0);
+    document.addEventListener('click', outsideClickHandler);
+  }, 10);
   lookupWord(trimmed).then(result => {
     if (activeDictionary !== pop) return;
     pop.innerHTML = `
@@ -2885,34 +3139,63 @@ function openDictionary(target, word) {
       <ol>${result.definitions.map(def => `<li>${escapeHtml(def.replace(/<[^>]+>/g, ' ').slice(0, 320))}</li>`).join('')}</ol>
       <div class="source">
         <button class="icon-action" type="button" data-speak="${escapeHtml(trimmed)}">🔊 Pronounce</button>
-        <a href="https://youglish.com/pronounce/${encodeURIComponent(trimmed)}/french" target="_blank" rel="noopener">Youglish (French)</a>
-        <a href="https://forvo.com/word/${encodeURIComponent(trimmed)}/#fr" target="_blank" rel="noopener">Forvo</a>
-        <a href="https://fr.wiktionary.org/wiki/${encodeURIComponent(trimmed)}" target="_blank" rel="noopener">Wiktionary</a>
-      </div>`;
+      </div>
+      <div class="dict-embed" id="dict-embed"></div>`;
     pop.querySelector('.close').addEventListener('click', closeDictionary);
     pop.querySelector('[data-speak]').addEventListener('click', event => speak(trimmed, event.currentTarget));
+    const embed = pop.querySelector('#dict-embed');
+    if (embed) mountDictEmbeds(embed, trimmed);
   }).catch(error => {
     if (activeDictionary !== pop) return;
     pop.innerHTML = `<button class="close" type="button" aria-label="Close">×</button>
       <h4>${escapeHtml(trimmed)}</h4>
-      <div class="error">No definition found for “${escapeHtml(trimmed)}”. Try one of the external sources:</div>
+      <div class="error">No definition found. Try the sources below:</div>
       <div class="source">
         <button class="icon-action" type="button" data-speak="${escapeHtml(trimmed)}">🔊 Pronounce</button>
-        <a href="https://youglish.com/pronounce/${encodeURIComponent(trimmed)}/french" target="_blank" rel="noopener">Youglish (French)</a>
-        <a href="https://forvo.com/word/${encodeURIComponent(trimmed)}/#fr" target="_blank" rel="noopener">Forvo</a>
-        <a href="https://fr.wiktionary.org/wiki/${encodeURIComponent(trimmed)}" target="_blank" rel="noopener">Wiktionary</a>
-      </div>`;
+      </div>
+      <div class="dict-embed" id="dict-embed"></div>`;
     pop.querySelector('.close').addEventListener('click', closeDictionary);
     pop.querySelector('[data-speak]').addEventListener('click', event => speak(trimmed, event.currentTarget));
+    const embed = pop.querySelector('#dict-embed');
+    if (embed) mountDictEmbeds(embed, trimmed);
   });
 }
 
+function mountDictEmbeds(container, word) {
+  const enc = encodeURIComponent(word);
+  container.innerHTML = `
+    <div class="dict-embed-row">
+      <button class="dict-embed-toggle" type="button" data-embed="youglish">Youglish</button>
+      <button class="dict-embed-toggle" type="button" data-embed="forvo">Forvo</button>
+      <a class="dict-embed-link" href="https://fr.wiktionary.org/wiki/${enc}" target="_blank" rel="noopener">Wiktionary ↗</a>
+    </div>
+    <div class="dict-embed-frame" id="dict-embed-frame"></div>`;
+  container.querySelectorAll('[data-embed]').forEach(btn => btn.addEventListener('click', () => {
+    const which = btn.dataset.embed;
+    const frame = container.querySelector('#dict-embed-frame');
+    if (!frame) return;
+    container.querySelectorAll('.dict-embed-toggle').forEach(b => b.classList.toggle('active', b.dataset.embed === which));
+    if (which === 'youglish') {
+      frame.innerHTML = `<iframe src="https://youglish.com/pronounce/${enc}/french" loading="lazy" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" title="Youglish French pronunciation"></iframe>`;
+    } else if (which === 'forvo') {
+      frame.innerHTML = `<iframe src="https://forvo.com/word/${enc}/" loading="lazy" sandbox="allow-scripts allow-same-origin allow-popups" title="Forvo pronunciation"></iframe>`;
+    }
+  }));
+  const firstBtn = container.querySelector('[data-embed="youglish"]');
+  if (firstBtn) firstBtn.click();
+}
+
 function outsideClickHandler(event) {
-  if (activeDictionary && !activeDictionary.contains(event.target)) closeDictionary();
+  if (Date.now() - dictionaryOpenTs < 80) return;
+  if (activeDictionary && !activeDictionary.contains(event.target) && !event.target.closest('[data-lookup]')) {
+    closeDictionary();
+    document.removeEventListener('click', outsideClickHandler);
+  }
 }
 
 function closeDictionary() {
   if (activeDictionary) { activeDictionary.remove(); activeDictionary = null; }
+  document.removeEventListener('click', outsideClickHandler);
 }
 
 /* ------------------- Toast notifications ------------------- */

@@ -355,6 +355,33 @@ function lessonCollection(item) {
   return 'learning';
 }
 
+async function buildPaths(records) {
+  const pathsFile = join(contentRoot, 'paths.json');
+  try {
+    const raw = await readFile(pathsFile, 'utf8');
+    const data = JSON.parse(raw);
+    if (!data.paths || !Array.isArray(data.paths)) return null;
+    const slugSet = new Set(records.map(r => r.item.slug));
+    const enriched = data.paths.map(path => {
+      const lessons = [];
+      const slugs = path.lessonSlugs || [];
+      for (let i = 0; i < slugs.length; i += 1) {
+        const slug = slugs[i];
+        if (!slugSet.has(slug)) {
+          console.warn(`  Warning: path "${path.id}" references unknown slug "${slug}" — skipped.`);
+          continue;
+        }
+        lessons.push(slug);
+      }
+      return { id: path.id, title: path.title, subtitle: path.subtitle || '', emoji: path.emoji || '📚', description: path.description || '', level: path.level || '', lessonSlugs: lessons, bookItems: path.bookItems || [] };
+    });
+    return { version: data.version || 1, paths: enriched };
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
 async function buildLibrary(records) {
   const collections = [
     { id: 'podcasts', label: 'Podcasts', short: 'Écoutez', emoji: '🎙️', blurb: 'Real French conversations, revealed line by line.', items: [] },
@@ -433,11 +460,27 @@ async function build() {
     await mkdir(dirname(destination), { recursive: true });
     await writeFile(destination, record.markdown);
   }
+  const library = await buildLibrary(records);
+  await writeFile(join(distRoot, 'content', 'library.json'), `${JSON.stringify(library, null, 2)}\n`);
+  const paths = await buildPaths(records);
+  if (paths) {
+    const slugToLesson = new Map(records.map(r => [r.item.slug, r.item]));
+    for (const path of paths.paths) {
+      for (let i = 0; i < path.lessonSlugs.length; i += 1) {
+        const lesson = slugToLesson.get(path.lessonSlugs[i]);
+        if (lesson) {
+          lesson.pathId = path.id;
+          lesson.pathOrder = i;
+          lesson.pathTotal = path.lessonSlugs.length;
+        }
+      }
+    }
+    await writeFile(join(distRoot, 'content', 'paths.json'), `${JSON.stringify(paths, null, 2)}\n`);
+    console.log(`Built ${paths.paths.length} learning paths with ${paths.paths.reduce((sum, p) => sum + p.lessonSlugs.length, 0)} path lessons.`);
+  }
   await writeFile(join(distRoot, 'content', 'index.json'), `${JSON.stringify({ version: 2, analytics: 'data/analytics.json', lessons: records.map(record => record.item) }, null, 2)}\n`);
   await writeFile(join(distRoot, 'data', 'analytics.json'), `${JSON.stringify(analytics, null, 2)}\n`);
   await writeFile(join(distRoot, 'data', 'analytics-summary.md'), summaryMarkdown(analytics));
-  const library = await buildLibrary(records);
-  await writeFile(join(distRoot, 'content', 'library.json'), `${JSON.stringify(library, null, 2)}\n`);
   const vocab = await buildVocab();
   await writeFile(join(distRoot, 'data', 'vocab.json'), `${JSON.stringify(vocab, null, 0)}\n`);
   console.log(`Built ${vocab.total} vocab entries by level: ${Object.entries(vocab.byLevel).map(([l, n]) => `${l}:${n}`).join(' ')}.`);
