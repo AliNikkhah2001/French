@@ -289,6 +289,7 @@ function showError(message) {
 }
 
 function showLesson() {
+  window.scrollTo(0, 0);
   $('loading-state').hidden = true;
   $('error-state').hidden = true;
   $('dashboard-view').hidden = true;
@@ -384,7 +385,7 @@ function renderHomeLibrary() {
     $('home-list').innerHTML = sorted.map(item => {
       const detail = [titleCase(item.type), item.level, item.duration].filter(Boolean).join(' · ');
       const progress = lessonProgress(item);
-      return `<button class="lesson-card" type="button" data-slug="${escapeHtml(item.slug)}"><span class="lesson-card-emoji">${escapeHtml(item.emoji)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(detail)}</small>${progress > 0 ? `<span class="card-progress" aria-label="${progress}% complete" title="${progress}% complete"><i style="width:${progress}%"></i></span>` : ''}<span class="lesson-arrow">›</span></button>`;
+      return `<button class="lesson-card" type="button" data-slug="${escapeHtml(item.slug)}"><span class="lesson-card-emoji">${escapeHtml(item.emoji)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(detail)}</small>${progress > 0 ? `<span class="card-progress" aria-label="${progress}% complete" title="${progress}% complete"><i style="width:${progress}%"></i></span>` : ''}<span class="lesson-arrow">›</span></span></button>`;
     }).join('');
     $('home-list').querySelectorAll('[data-slug]').forEach(button => button.addEventListener('click', async () => {
       if (button.disabled) return;
@@ -408,7 +409,7 @@ function renderHomeLibrary() {
     const progress = lessonProgress(item);
     const unlocked = isLessonUnlocked(item.slug);
     const isCurrent = unlocked && idx === firstUnlockedIdx;
-    return `<button class="lesson-card ${!unlocked ? 'locked' : ''} ${isCurrent ? 'current-lesson' : ''}" type="button" data-slug="${escapeHtml(item.slug)}" ${!unlocked ? 'disabled' : ''}><span class="lesson-card-emoji">${unlocked ? escapeHtml(item.emoji) : '🔒'}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(detail)}${!unlocked ? ' — Complete previous lesson to unlock' : ''}${progress > 0 ? `<span class="card-progress" aria-label="${progress}% complete" title="${progress}% complete"><i style="width:${progress}%"></i></span>` : ''}<span class="lesson-arrow">${unlocked ? '›' : ''}</span></button>`;
+    return `<button class="lesson-card ${!unlocked ? 'locked' : ''} ${isCurrent ? 'current-lesson' : ''}" type="button" data-slug="${escapeHtml(item.slug)}" ${!unlocked ? 'disabled' : ''}><span class="lesson-card-emoji">${unlocked ? escapeHtml(item.emoji) : '🔒'}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(detail)}${!unlocked ? ' — Complete previous lesson to unlock' : ''}${progress > 0 ? `<span class="card-progress" aria-label="${progress}% complete" title="${progress}% complete"><i style="width:${progress}%"></i></span>` : ''}<span class="lesson-arrow">${unlocked ? '›' : ''}</span></span></button>`;
   }).join('');
   $('home-list').querySelectorAll('[data-slug]').forEach(button => button.addEventListener('click', async () => {
     if (button.disabled) return;
@@ -542,16 +543,14 @@ function renderHome() {
     setActivePath(button.dataset.gotoPath);
     renderHome();
   }));
-  if (state.paths?.paths?.length) {
-    renderHomeFilters();
-    renderHomeLibrary();
-  } else {
+  if (!state.paths?.paths?.length) {
     renderHomeFilters();
     renderHomeLibrary();
   }
 }
 
 function showHome() {
+  window.scrollTo(0, 0);
   if (!state.manifest) return;
   $('loading-state').hidden = true;
   $('error-state').hidden = true;
@@ -562,6 +561,7 @@ function showHome() {
   $('practice-view').hidden = true;
   $('wordlist-view').hidden = true;
   $('review-view').hidden = true;
+  $('phonetics-view').hidden = true;
   $('home-view').hidden = false;
   document.documentElement.classList.add('view-home');
   document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
@@ -599,6 +599,7 @@ function clearNavActive() {
 }
 
 function showLibrary() {
+  window.scrollTo(0, 0);
   if (!state.library) { showError('Library not found. Run “npm run build”.'); return; }
   hideAllMainViews();
   $('library-view').hidden = false;
@@ -769,6 +770,7 @@ function savePdfMemory(file) {
 }
 
 function showReader(file, kind) {
+  window.scrollTo(0, 0);
   hideAllMainViews();
   $('reader-view').hidden = false;
   document.documentElement.classList.remove('view-home');
@@ -1026,6 +1028,7 @@ function epubTitleFromPath(file) {
 }
 
 function showEpubReader(file) {
+  window.scrollTo(0, 0);
   state.epubFile = file;
   state.epub = null;
   state.epubIndex = 0;
@@ -1504,6 +1507,7 @@ function buildPracticeQuestions(mode) {
 }
 
 function showPractice() {
+  window.scrollTo(0, 0);
   hideAllMainViews();
   $('practice-view').hidden = false;
   document.documentElement.classList.remove('view-home');
@@ -1720,7 +1724,7 @@ function renderPracticeQuestion() {
       <p class="question-feedback practice-feedback" hidden></p>
     </div>
     <div class="quiz-footer">
-      <button class="button blue" id="practice-check" type="button">Check</button>
+      <button class="button blue" id="practice-check" type="button"${question.type === 'matching' ? ' disabled' : ''}>Check</button>
       <button class="button paper" id="practice-skip" type="button">Skip</button>
       <span class="quiz-score">${practiceIndex + 1} / ${count}</span>
     </div>`;
@@ -2101,6 +2105,7 @@ const PHONEMES = [
 ];
 
 function showPhonetics() {
+  window.scrollTo(0, 0);
   hideAllMainViews();
   $('phonetics-view').hidden = false;
   document.documentElement.classList.remove('view-home');
@@ -2154,7 +2159,7 @@ async function loadLesson(item, requestedTab = null) {
     renderTabs();
     renderActiveTab();
     updateProgress();
-    replaceRoute(item.slug, state.activeTab);
+    replaceRoute({ slug: item.slug, tab: state.activeTab });
     showLesson();
     renderLibrary();
     document.title = `${item.title} · Le Petit Atelier Français`;
@@ -2213,7 +2218,7 @@ function renderTabs() {
   $('lesson-tabs').innerHTML = availableTabs().map(tab => `<button class="tab-button ${tab.id === state.activeTab ? 'active' : ''}" type="button" role="tab" aria-selected="${tab.id === state.activeTab}" data-tab="${tab.id}">${escapeHtml(tab.label)}</button>`).join('');
   $('lesson-tabs').querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => {
     state.activeTab = button.dataset.tab;
-    renderTabs(); renderActiveTab(); replaceRoute(state.selected.slug, state.activeTab);
+    renderTabs(); renderActiveTab(); replaceRoute({ slug: state.selected.slug, tab: state.activeTab });
     $('tab-panel').focus({ preventScroll: true });
   }));
 }
@@ -2245,7 +2250,11 @@ function renderTranscript(query = '') {
   const q = normalize(query);
   const matches = state.lesson.transcript.map((line, index) => ({ line, index })).filter(({ line }) => !q || normalize([line.french, line.english, line.notes].join(' ')).includes(q));
   $('tab-panel').innerHTML = `${sectionHeading('Écoutez, puis regardez', 'Transcript lab', 'Reveal translations one at a time. Listening before reading trains your ear.', `${progress.revealed.length}/${state.lesson.transcript.length} revealed`)}<div class="transcript-controls"><label class="compact-search"><span>⌕</span><input id="transcript-search" type="search" value="${escapeHtml(query)}" placeholder="Search the transcript…"></label><button class="button paper small" id="reveal-all" type="button">Reveal all</button><button class="button paper small" id="hide-all" type="button">Hide all</button></div><div class="transcript-list">${matches.map(({ line, index }) => transcriptCard(line, index, progress.revealed.includes(index))).join('') || '<div class="empty-section">No matching line. Try another word.</div>'}</div>`;
-  $('transcript-search').addEventListener('input', event => renderTranscript(event.target.value));
+  let transcriptDebounce;
+  $('transcript-search').addEventListener('input', event => {
+    clearTimeout(transcriptDebounce);
+    transcriptDebounce = setTimeout(() => renderTranscript(event.target.value), 200);
+  });
   $('reveal-all').addEventListener('click', () => { const next = getProgress(); if (next.revealed.length < state.lesson.transcript.length) recordActivity('translation'); next.revealed = state.lesson.transcript.map((_, index) => index); setProgress(next); renderTranscript(query); });
   $('hide-all').addEventListener('click', () => { const next = getProgress(); next.revealed = []; setProgress(next); renderTranscript(query); });
   $('tab-panel').querySelectorAll('[data-reveal-line]').forEach(button => button.addEventListener('click', () => toggleTranslation(Number(button.dataset.revealLine), query)));
@@ -2581,6 +2590,7 @@ function countDistribution(values) {
 }
 
 function showDashboard() {
+  window.scrollTo(0, 0);
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = false;
   $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true; $('phonetics-view').hidden = true;
@@ -2636,6 +2646,7 @@ function recordReview(word, quality) {
 }
 
 function showWordList() {
+  window.scrollTo(0, 0);
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = true;
   $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true; $('phonetics-view').hidden = true;
@@ -2810,12 +2821,16 @@ function importWordListJson(event) {
 function importWords(text) {
   const lines = String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const list = getWordList();
+  const existing = new Set(list.map(w => normalizeFrench(w.french)));
   let added = 0;
   for (const line of lines) {
     const parts = line.split(/[—–\-=:,;]\s*|\t+/).map(p => p.trim()).filter(Boolean);
     if (!parts.length) continue;
     const [french, english, type] = parts;
     if (!french) continue;
+    const key = normalizeFrench(french);
+    if (existing.has(key)) continue;
+    existing.add(key);
     list.unshift({
       id: `word-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       french, english: english || '', type: type || 'vocab', createdAt: Date.now()
@@ -2837,6 +2852,7 @@ function reviewQueue(filter = state.reviewFilter) {
 }
 
 function showReview() {
+  window.scrollTo(0, 0);
   if (!state.analytics) return;
   $('loading-state').hidden = true; $('error-state').hidden = true; $('lesson-view').hidden = true; $('dashboard-view').hidden = true;
   $('home-view').hidden = true; $('library-view').hidden = true; $('reader-view').hidden = true; $('practice-view').hidden = true; $('phonetics-view').hidden = true;
@@ -2889,12 +2905,12 @@ function renderReview() {
       <button class="button blue" id="review-reveal" type="button">${state.reviewRevealed ? 'Hide meaning' : 'Reveal meaning'}</button>
       <button class="button paper" id="review-skip" type="button">Skip →</button>
     </div>
-    <div class="review-controls">
+    ${state.reviewRevealed ? `<div class="review-controls">
       <button class="button red" data-quality="1" type="button">Forgot</button>
       <button class="button paper" data-quality="2" type="button">Hard</button>
       <button class="button paper" data-quality="3" type="button">Good</button>
       <button class="button blue" data-quality="4" type="button">Easy</button>
-    </div>
+    </div>` : ''}
     <div class="review-progress">
       <span>${head} · next due ${dueAt}</span>
       <span class="progress-fill-mini"><b style="width:${percent(state.reviewIndex + 1, total)}%"></b></span>
@@ -3181,8 +3197,7 @@ function mountDictEmbeds(container, word) {
       frame.innerHTML = `<iframe src="https://forvo.com/word/${enc}/" loading="lazy" sandbox="allow-scripts allow-same-origin allow-popups" title="Forvo pronunciation"></iframe>`;
     }
   }));
-  const firstBtn = container.querySelector('[data-embed="youglish"]');
-  if (firstBtn) firstBtn.click();
+
 }
 
 function outsideClickHandler(event) {
@@ -3207,7 +3222,7 @@ function showToast(message, kind = 'success') {
   tpl.textContent = message;
   tpl.classList.add(kind);
   document.body.appendChild(tpl);
-  toastTimeout = setTimeout(() => { tpl.remove(); }, 2600);
+  toastTimeout = setTimeout(() => { tpl.remove(); }, 4000);
 }
 function closeToast() {
   document.querySelectorAll('.toast').forEach(node => node.remove());
@@ -3306,14 +3321,18 @@ async function importProgress(event) {
     if (Array.isArray(payload.frequencyKnown)) localStorage.setItem(FREQUENCY_KEY, JSON.stringify(payload.frequencyKnown.map(normalizeFrench)));
     if (Array.isArray(payload.wordlist)) saveWordList(payload.wordlist);
     recordActivity('import'); renderDashboard(); $('import-status').textContent = `Imported ${file.name} successfully.`;
+    setTimeout(() => { if ($('import-status')) $('import-status').textContent = ''; }, 5000);
   } catch (error) {
     $('import-status').textContent = `Import failed: ${error.message}`;
+    setTimeout(() => { if ($('import-status')) $('import-status').textContent = ''; }, 5000);
   }
 }
 
 function closeMobileLibrary() {
   $('library-panel').classList.remove('open');
   $('mobile-library-button').setAttribute('aria-expanded', 'false');
+  const bd = document.querySelector('.library-backdrop');
+  if (bd) bd.classList.remove('visible');
 }
 
 function initTheme() {
@@ -3324,7 +3343,7 @@ function initTheme() {
 }
 
 $('library-search').addEventListener('input', event => { state.search = event.target.value; renderLibrary(); });
-$('mobile-library-button').addEventListener('click', () => { const open = $('library-panel').classList.toggle('open'); $('mobile-library-button').setAttribute('aria-expanded', String(open)); });
+$('mobile-library-button').addEventListener('click', () => { const open = $('library-panel').classList.toggle('open'); $('mobile-library-button').setAttribute('aria-expanded', String(open)); let backdrop = document.querySelector('.library-backdrop'); if (!backdrop) { backdrop = document.createElement('div'); backdrop.className = 'library-backdrop'; document.body.appendChild(backdrop); } backdrop.classList.toggle('visible', open); backdrop.onclick = closeMobileLibrary; });
 $('dashboard-button').addEventListener('click', () => { location.hash = 'view=dashboard'; });
 $('wordlist-button').addEventListener('click', () => { location.hash = 'view=wordlist'; });
 $('review-button').addEventListener('click', () => { location.hash = 'view=review'; });
