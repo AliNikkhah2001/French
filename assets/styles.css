@@ -587,4 +587,4 @@ html.is-standalone .home-library .search-box { top: calc(48px + env(safe-area-in
   .matching-area { grid-template-columns: 1fr; }
   .practice-modes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .reader-bar { flex-wrap: wrap; gap: 4px; }
-  .reader-bar button { min-height: 44px; }
+  .reader-bar button { min-height: 44px; }path-hero { background: var(--paper); border: 1px solid var(--hairline); border-radius: 14px; padding: 22px 20px 18px; box-shadow: var(--soft-shadow); margin-bottom: 18px; }
