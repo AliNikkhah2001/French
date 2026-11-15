@@ -5,13 +5,15 @@
 <h1 align="center">Le Petit Atelier Français 🇫🇷</h1>
 
 <p align="center">
-  <em>français, mais amusant — a playful, Markdown-powered French learning atelier</em>
+  <em>français, mais amusant — semester A1 practice + Édito companion</em>
 </p>
 
 <p align="center">
   <a href="https://alinikkhah2001.github.io/French/"><strong>✦ Live Demo → alinikkhah2001.github.io/French</strong></a><br/>
-  <sub>14 lessons · PWA · offline · iOS Home Screen ready</sub>
+  <sub>Semestre A1 path · Édito companion · PWA · offline · iOS Home Screen ready</sub>
 </p>
+
+> **Default experience (2026):** home opens on **Semestre A1** (heure, RDV, journée, famille, futur/météo + drills). Older podcast/song paths stay in the repo but are hidden behind **Bibliothèque complète**. Édito A1 is an external paid/legal companion ([Didier numérique](https://didierfle.com/produit/edito-a1-edition-2022-2024-livre-numerique/)) — this app does not redistribute the book. Phone test checklist: [`docs/semester-a1/PHONE_UX_TEST_PLAN.md`](docs/semester-a1/PHONE_UX_TEST_PLAN.md).
 
 <p align="center">
   <img src="https://img.shields.io/badge/PWA-ready-1a4a80?style=flat-square" alt="PWA ready"/>

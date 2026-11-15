@@ -373,7 +373,7 @@ async function buildPaths(records) {
         }
         lessons.push(slug);
       }
-      return { id: path.id, title: path.title, subtitle: path.subtitle || '', emoji: path.emoji || '📚', description: path.description || '', level: path.level || '', lessonSlugs: lessons, bookItems: path.bookItems || [] };
+      return { id: path.id, title: path.title, subtitle: path.subtitle || '', emoji: path.emoji || '📚', description: path.description || '', level: path.level || '', archived: Boolean(path.archived), lessonSlugs: lessons, bookItems: path.bookItems || [] };
     });
     return { version: data.version || 1, paths: enriched };
   } catch (error) {

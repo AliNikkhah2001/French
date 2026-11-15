@@ -2,12 +2,47 @@
   "version": 1,
   "paths": [
     {
+      "id": "semestre-a1",
+      "title": "Semestre A1",
+      "subtitle": "Ce que nous avons appris en classe",
+      "emoji": "🎓",
+      "description": "Heure, dates, rendez-vous, journée typique, famille, futur proche et météo — avec beaucoup de pratique.",
+      "level": "A1",
+      "archived": false,
+      "lessonSlugs": [
+        "a1-heure-date",
+        "a1-rdv-sorties",
+        "a1-journee-pronominaux",
+        "a1-famille-possessifs",
+        "a1-futur-meteo",
+        "a1-drill-heure",
+        "a1-drill-possessifs",
+        "a1-drill-futur-meteo"
+      ]
+    },
+    {
+      "id": "edito-a1-companion",
+      "title": "Companion Édito A1",
+      "subtitle": "Lire le livre · pratiquer ici",
+      "emoji": "📘",
+      "description": "Cartes d’objectifs par unité Édito A1 (structure publique) + drills originaux. Ouvrez votre livre numérique Didier / Educadhoc à côté.",
+      "level": "A1",
+      "archived": false,
+      "lessonSlugs": [
+        "edito-u0-u1-bienvenue",
+        "edito-u2-pres-de-moi",
+        "edito-u5-u6-temps-activites",
+        "edito-vie-pratique-sorties"
+      ]
+    },
+    {
       "id": "bienvenue",
       "title": "Bienvenue",
       "subtitle": "Your first words in French",
       "emoji": "👋",
       "description": "Start here. Learn through music, stories, and your first podcast episodes.",
       "level": "A1–A2",
+      "archived": true,
       "lessonSlugs": [
         "une-chanson-revolutionnaire",
         "french-exams-roadmap",
@@ -26,6 +61,7 @@
       "emoji": "🎧",
       "description": "Curated podcast episodes to build listening comprehension. Each episode is a true French story.",
       "level": "A2",
+      "archived": true,
       "lessonSlugs": [
         "episode-4-le-vigneron-rebelle-the-rebel-winemaker",
         "episode-6-le-surfeur-sans-limites-the-surfer-without-limits",
@@ -48,6 +84,7 @@
       "emoji": "🎵",
       "description": "French songs with grammar breakdowns, plus cultural traditions — perfume, gastronomy, Paris.",
       "level": "A2–B1",
+      "archived": true,
       "lessonSlugs": [
         "je-te-promets-johnny-hallyday",
         "alors-on-danse-stromae",
@@ -72,6 +109,7 @@
       "emoji": "📖",
       "description": "Longer, more complex podcast stories. From rebel thieves to Paris hidden corners.",
       "level": "A2–B1",
+      "archived": true,
       "lessonSlugs": [
         "episode-37-etretat-mon-amour-etretat-my-love",
         "episode-38-lyon-mon-amour-lyon-my-love",
@@ -97,6 +135,7 @@
       "emoji": "📚",
       "description": "Tintin adventures, Albert Camus classics, and grammar reference — read, highlight, and look up words.",
       "level": "B1–B2",
+      "archived": true,
       "lessonSlugs": [],
       "bookItems": [
         "added content/01 - Tintin au pays des Soviets - iranfrench.ir.pdf",

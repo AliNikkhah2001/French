@@ -8,6 +8,9 @@ const WORDLIST_KEY = 'atelier-wordlist-v1';
 const LAST_KEY = 'atelier-last-lesson';
 const UNLOCK_KEY = 'atelier-unlocked-lessons';
 const PATH_KEY = 'atelier-active-path';
+const FULL_LIBRARY_KEY = 'atelier-full-library';
+const DEFAULT_PATH_ID = 'semestre-a1';
+const PRIMARY_PATH_IDS = new Set(['semestre-a1', 'edito-a1-companion']);
 const state = {
   manifest: null,
   analytics: null,
@@ -22,12 +25,13 @@ const state = {
   cardRevealed: false,
   entityType: 'all',
   entitySearch: '',
-  view: 'lesson',
+  view: 'home',
   wordlistFilter: 'all',
   reviewFilter: 'due',
   reviewIndex: 0,
   reviewRevealed: false,
-  installEvent: null
+  installEvent: null,
+  showFullLibrary: false
 };
 
 const $ = id => document.getElementById(id);
@@ -119,11 +123,39 @@ function setProgress(progress, slug = state.selected?.slug) {
 }
 
 function getActivePath() {
-  return localStorage.getItem(PATH_KEY) || 'bienvenue';
+  const saved = localStorage.getItem(PATH_KEY);
+  if (!state.paths?.paths?.length) return saved || DEFAULT_PATH_ID;
+  if (saved && getPathById(saved)) return saved;
+  return DEFAULT_PATH_ID;
 }
 
 function setActivePath(pathId) {
   localStorage.setItem(PATH_KEY, pathId);
+}
+
+function isFullLibraryEnabled() {
+  return state.showFullLibrary === true || localStorage.getItem(FULL_LIBRARY_KEY) === '1';
+}
+
+function setFullLibraryEnabled(enabled) {
+  state.showFullLibrary = Boolean(enabled);
+  localStorage.setItem(FULL_LIBRARY_KEY, enabled ? '1' : '0');
+}
+
+function visiblePaths() {
+  const paths = state.paths?.paths || [];
+  if (isFullLibraryEnabled()) return paths;
+  return paths.filter(path => !path.archived);
+}
+
+function primaryLessonSlugs() {
+  const paths = state.paths?.paths || [];
+  const slugs = new Set();
+  for (const path of paths) {
+    if (!isFullLibraryEnabled() && !PRIMARY_PATH_IDS.has(path.id)) continue;
+    for (const slug of path.lessonSlugs || []) slugs.add(slug);
+  }
+  return slugs;
 }
 
 function getPathById(pathId) {
@@ -164,13 +196,11 @@ function isLessonUnlocked(slug) {
   if (!lesson.pathId) return true;
   const path = getPathById(lesson.pathId);
   if (!path) return true;
+  // Archived library: freely browsable when revealed.
+  if (path.archived) return true;
+  // Primary paths: sequential unlock within the path only (no cross-path gate).
   const pathOrder = lesson.pathOrder ?? 0;
-  if (pathOrder === 0) {
-    const pathIndex = (state.paths?.paths || []).findIndex(p => p.id === path.id);
-    if (pathIndex <= 0) return true;
-    const prevPath = state.paths.paths[pathIndex - 1];
-    return prevPath.lessonSlugs.every(s => isLessonCompleted(s));
-  }
+  if (pathOrder === 0) return true;
   const prevSlug = path.lessonSlugs[pathOrder - 1];
   return prevSlug ? isLessonCompleted(prevSlug) : true;
 }
@@ -214,14 +244,19 @@ function updateProgress() {
 
 async function loadManifest() {
   showLoading();
+  state.showFullLibrary = localStorage.getItem(FULL_LIBRARY_KEY) === '1';
   try {
     const manifestResponse = await siteFetch('content/index.json');
     if (!manifestResponse.ok) throw new Error(`Content manifest returned ${manifestResponse.status} at ${manifestResponse.url}.`);
     state.manifest = await manifestResponse.json();
     const analyticsPath = state.manifest.analytics || 'data/analytics.json';
-    const analyticsResponse = await siteFetch(analyticsPath);
-    if (!analyticsResponse.ok) throw new Error(`Analytics returned ${analyticsResponse.status} at ${analyticsResponse.url}.`);
-    state.analytics = await analyticsResponse.json();
+    try {
+      const analyticsResponse = await siteFetch(analyticsPath);
+      if (analyticsResponse.ok) state.analytics = await analyticsResponse.json();
+      else state.analytics = { totals: { lessons: state.manifest.lessons?.length || 0 } };
+    } catch {
+      state.analytics = { totals: { lessons: state.manifest.lessons?.length || 0 } };
+    }
     try {
       const libraryResponse = await siteFetch('content/library.json');
       if (libraryResponse.ok) state.library = await libraryResponse.json();
@@ -234,6 +269,9 @@ async function loadManifest() {
       const pathsResponse = await siteFetch('content/paths.json');
       if (pathsResponse.ok) state.paths = await pathsResponse.json();
     } catch { /* paths optional */ }
+    if (!localStorage.getItem(PATH_KEY) || !getPathById(localStorage.getItem(PATH_KEY))) {
+      setActivePath(DEFAULT_PATH_ID);
+    }
     if (state.vocab) console.info(`[Atelier] vocabulary bank ready: ${state.vocab.total} words by ${state.vocab.levelOrder.join(' / ')}`);
     if (state.paths) console.info(`[Atelier] learning paths ready: ${state.paths.paths.length} paths`);
     renderTypeFilters();
@@ -246,10 +284,11 @@ async function loadManifest() {
     else if (route.view === 'reader' && route.file) showReader(route.file, route.type);
     else if (route.view === 'practice') showPractice();
     else if (route.view === 'phonetics') showPhonetics();
-    else if (route.view === 'home') showHome();
+    else if (route.view === 'home' || !route.slug) showHome();
     else {
-      const selected = state.manifest.lessons.find(item => item.slug === route.slug) || state.manifest.lessons[0];
-      await loadLesson(selected, route.tab);
+      const selected = state.manifest.lessons.find(item => item.slug === route.slug);
+      if (selected) await loadLesson(selected, route.tab);
+      else showHome();
     }
   } catch (error) {
     console.error(error);
@@ -309,7 +348,9 @@ function showLesson() {
 
 function filteredLessons() {
   const query = normalize(state.search);
+  const allowed = isFullLibraryEnabled() ? null : primaryLessonSlugs();
   return state.manifest.lessons.filter(item => {
+    if (allowed && !allowed.has(item.slug)) return false;
     const typeMatch = state.type === 'all' || item.type === state.type;
     const haystack = normalize([item.title, item.description, item.author, item.level, ...(item.tags || [])].join(' '));
     return typeMatch && (!query || haystack.includes(query));
@@ -426,7 +467,7 @@ function renderPathHero() {
   const progress = getPathProgress(activePathId);
   const pct = progress.total ? Math.round(progress.completed / progress.total * 100) : 0;
   const currentLesson = progress.currentSlug ? state.manifest?.lessons?.find(l => l.slug === progress.currentSlug) : null;
-  const pathSelector = state.paths.paths.map(p => {
+  const pathSelector = visiblePaths().map(p => {
     const pProgress = getPathProgress(p.id);
     const isActive = p.id === activePathId;
     return `<button class="path-selector-btn ${isActive ? 'active' : ''}" type="button" data-path-id="${escapeHtml(p.id)}">${escapeHtml(p.emoji)} ${escapeHtml(p.title)} <small>${pProgress.completed}/${pProgress.total}</small></button>`;
@@ -461,20 +502,35 @@ function renderPathLibrary() {
   if (!state.paths?.paths?.length) {
     return `<section class="home-library"><h3>La bibliothèque</h3><p>Pick today's adventure — search and filter the lessons, then tap to open.</p><label class="search-box"><span aria-hidden="true">⌕</span><input id="home-search" type="search" value="${escapeHtml(state.search)}" placeholder="Search lessons…" autocomplete="off"></label><div class="filter-scroller" id="home-filters" aria-label="Filter by content type"></div><div class="lesson-count" id="home-count"></div><div class="lesson-list" id="home-list" aria-live="polite"></div></section>`;
   }
-  const assignedSlugs = new Set(state.paths.paths.flatMap(p => p.lessonSlugs));
+  const shown = visiblePaths();
+  const assignedSlugs = new Set((state.paths.paths || []).flatMap(p => p.lessonSlugs));
   const unassigned = (state.manifest?.lessons || []).filter(l => !assignedSlugs.has(l.slug));
-  const pathCards = state.paths.paths.map(path => {
+  const archivedCount = (state.paths.paths || []).filter(p => p.archived).length;
+  const pathCards = shown.map(path => {
     const progress = getPathProgress(path.id);
     const pct = progress.total ? Math.round(progress.completed / progress.total * 100) : 0;
     return `<button class="path-card" type="button" data-goto-path="${escapeHtml(path.id)}"><span class="path-card-emoji">${escapeHtml(path.emoji)}</span><span><strong>${escapeHtml(path.title)}</strong><small>${escapeHtml(path.description)}</small><span class="card-progress"><i style="width:${pct}%"></i></span></span><span class="lesson-arrow">›</span></button>`;
   }).join('');
-  const exploreCount = unassigned.length;
+  const exploreCount = isFullLibraryEnabled() ? unassigned.length : 0;
+  const archiveToggle = archivedCount
+    ? `<label class="archive-toggle"><input type="checkbox" id="full-library-toggle" ${isFullLibraryEnabled() ? 'checked' : ''}> Bibliothèque complète <small>(${archivedCount} parcours archivés)</small></label>`
+    : '';
   return `
     <section class="home-library">
-      <h3>Learning paths</h3>
-      <p>Choose a path and follow it lesson by lesson. Each path unlocks the next.</p>
+      <h3>Parcours A1</h3>
+      <p>Semestre + companion Édito. Les anciens podcasts restent disponibles via la bibliothèque complète.</p>
       <div class="path-cards">${pathCards}</div>
+      ${archiveToggle}
       ${exploreCount ? `<div class="explore-link"><a href="#view=library">🔍 Explore ${exploreCount} more lessons in the library</a></div>` : ''}
+      <div class="edito-links narrow-panel">
+        <strong>Livre Édito A1 (légal)</strong>
+        <p>Lisez le manuel à côté de l’app — nous ne redistribuons pas le PDF.</p>
+        <p>
+          <a class="button blue small" href="https://didierfle.com/produit/edito-a1-edition-2022-2024-livre-numerique/" target="_blank" rel="noopener">Livre numérique Didier</a>
+          <a class="button paper small" href="https://eboutique.didierfle.com/fr/US/products/edito-niveau-a1-2022-2eme-edition-livre-numerique-eleve" target="_blank" rel="noopener">eBoutique Educadhoc</a>
+          <a class="button paper small" href="https://santillanafrancais.fr/wp-content/uploads/2022/09/Guide-pedagogique-Edito-A1-2022.pdf" target="_blank" rel="noopener">Guide pédagogique (TOC)</a>
+        </p>
+      </div>
     </section>`;
 }
 
@@ -543,6 +599,17 @@ function renderHome() {
     setActivePath(button.dataset.gotoPath);
     renderHome();
   }));
+  const fullToggle = $('full-library-toggle');
+  if (fullToggle) {
+    fullToggle.addEventListener('change', () => {
+      setFullLibraryEnabled(fullToggle.checked);
+      const active = getActivePath();
+      const activePath = getPathById(active);
+      if (!isFullLibraryEnabled() && activePath?.archived) setActivePath(DEFAULT_PATH_ID);
+      renderHome();
+      renderLibrary();
+    });
+  }
   if (!state.paths?.paths?.length) {
     renderHomeFilters();
     renderHomeLibrary();
