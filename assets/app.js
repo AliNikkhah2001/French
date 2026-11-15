@@ -2795,31 +2795,33 @@ function customPackManifestItem(pack) {
 function mergeCustomPacksIntoState() {
   if (!state.manifest) return;
   const packs = getCustomPacks();
-  state.manifest.lessons = (state.manifest.lessons || []).filter(lesson => !lesson.custom);
-  if (state.paths?.paths) {
-    state.paths.paths = state.paths.paths.filter(path => path.id !== 'mes-devoirs');
+  const baseLessons = (state.manifest.lessons || []).filter(lesson => !lesson.custom);
+  state.manifest = { ...state.manifest, lessons: baseLessons };
+  const basePaths = (state.paths?.paths || []).filter(path => path.id !== 'mes-devoirs');
+  if (!packs.length) {
+    if (state.paths) state.paths = { ...state.paths, paths: basePaths };
+    return;
   }
-  if (!packs.length) return;
   const items = packs.map(customPackManifestItem);
-  state.manifest.lessons = [...items, ...state.manifest.lessons];
-  if (!state.paths) state.paths = { version: 1, paths: [] };
-  if (!Array.isArray(state.paths.paths)) state.paths.paths = [];
-  state.paths.paths.unshift({
-    id: 'mes-devoirs',
-    title: 'Mes devoirs',
-    subtitle: 'Ajoutés sur cet appareil',
-    emoji: '➕',
-    description: 'Homeworks, flashcards et examens que vous avez créés ici.',
-    level: 'A1',
-    archived: false,
-    lessonSlugs: packs.map(pack => pack.slug)
-  });
-  PRIMARY_PATH_IDS.add('mes-devoirs');
+  state.manifest = { ...state.manifest, lessons: [...items, ...baseLessons] };
+  state.paths = {
+    version: state.paths?.version || 1,
+    paths: [{
+      id: 'mes-devoirs',
+      title: 'Mes devoirs',
+      subtitle: 'Ajoutés sur cet appareil',
+      emoji: '➕',
+      description: 'Homeworks, flashcards et examens que vous avez créés ici.',
+      level: 'A1',
+      archived: false,
+      lessonSlugs: packs.map(pack => pack.slug)
+    }, ...basePaths]
+  };
 }
 
 function parseFlashcardLines(text) {
   return String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
-    const parts = line.split(/\s*[—–\-|=]\s*/);
+    const parts = line.split(/\s*(?:—|–|-|=|\|)\s*/);
     return { front: parts[0] || '', back: parts[1] || '', hint: parts[2] || '' };
   }).filter(card => card.front && card.back);
 }

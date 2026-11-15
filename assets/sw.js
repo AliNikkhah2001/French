@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atelier-francais-v10';
+const CACHE_NAME = 'atelier-francais-v12';
 const PRECACHE_URLS = [
   './',
   'index.html',
@@ -18,7 +18,8 @@ const PRECACHE_URLS = [
   'assets/vendor/pdfjs/pdf.worker.mjs',
   'assets/vendor/jszip.min.js',
   'content/index.json',
-  'content/library.json'
+  'content/library.json',
+  'content/paths.json'
 ];
 
 self.addEventListener('install', event => {
@@ -56,9 +57,15 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // App content, manifest, library, vocab, analytics: network-first with cache fallback
-  // so lesson/library updates propagate without manual cache resets.
-  if (url.pathname.includes('/content/') || url.pathname.includes('/data/')) {
+  // App shell JS/CSS + content/data: network-first so deploys are not stuck on stale SW cache.
+  const networkFirst = url.pathname.includes('/content/')
+    || url.pathname.includes('/data/')
+    || url.pathname.endsWith('/app.js')
+    || url.pathname.endsWith('/styles.css')
+    || url.pathname.endsWith('/content-parser.js')
+    || url.pathname.endsWith('/analytics-utils.js')
+    || url.pathname.endsWith('/sw.js');
+  if (networkFirst) {
     event.respondWith(
       fetch(request).then(response => {
         if (response.ok) {
@@ -74,13 +81,12 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // For static assets: cache-first, network fallback
+  // Icons/vendor: cache-first, network fallback
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached;
       return fetch(request).then(response => {
-        // cache successful responses for app assets
-        if (response.ok && (url.pathname.includes('/assets/') || url.pathname.includes('/content/') || url.pathname.includes('/data/'))) {
+        if (response.ok && url.pathname.includes('/assets/')) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         }
