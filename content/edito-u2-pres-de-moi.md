@@ -56,3 +56,8 @@ Reliez avec votre leçon semestre **La famille et les adjectifs possessifs**.
 | Possessif pluriel (je) | mon | ma | mes | son | C | mes |
 | Présenter sa mère | C’est mon mère. | C’est ma mère. | C’est mes mère. | C’est sa mère. | B | ma |
 | Verbe parler (vous) | parle | parles | parlons | parlez | D | -ez |
+| C’est ___ sœur. (je) | ma | mon | mes | sa | A | sœur fém. |
+| Il aime ___ frère. | son | sa | ses | ton | A | frère masc. |
+| Nous ___ à Téhéran. (habiter) | habitons | habitez | habite | habites | A | nous -ons |
+| Ce sont ___ parents. (tu) | tes | ton | ta | ses | A | pluriel |
+| Elle téléphone à ___ père. | son | sa | ses | mon | A | père masc. |

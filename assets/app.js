@@ -11,7 +11,8 @@ const PATH_KEY = 'atelier-active-path';
 const FULL_LIBRARY_KEY = 'atelier-full-library';
 const CUSTOM_PACKS_KEY = 'atelier-custom-packs-v1';
 const DEFAULT_PATH_ID = 'cahier-classe';
-const PRIMARY_PATH_IDS = new Set(['cahier-classe', 'semestre-a1', 'edito-a1-companion']);
+const PRIMARY_PATH_IDS = new Set(['cahier-classe', 'semestre-a1', 'edito-a1-companion', 'mes-devoirs']);
+const isPrimaryPath = id => PRIMARY_PATH_IDS.has(id);
 const state = {
   manifest: null,
   analytics: null,
@@ -153,7 +154,7 @@ function primaryLessonSlugs() {
   const paths = state.paths?.paths || [];
   const slugs = new Set();
   for (const path of paths) {
-    if (!isFullLibraryEnabled() && !PRIMARY_PATH_IDS.has(path.id)) continue;
+    if (!isFullLibraryEnabled() && !isPrimaryPath(path.id)) continue;
     for (const slug of path.lessonSlugs || []) slugs.add(slug);
   }
   return slugs;
@@ -263,10 +264,6 @@ async function loadManifest() {
       if (libraryResponse.ok) state.library = await libraryResponse.json();
     } catch { /* library optional */ }
     try {
-      const vocabResponse = await siteFetch('data/vocab.json');
-      if (vocabResponse.ok) state.vocab = await vocabResponse.json();
-    } catch { /* vocab optional */ }
-    try {
       const pathsResponse = await siteFetch('content/paths.json');
       if (pathsResponse.ok) state.paths = await pathsResponse.json();
     } catch { /* paths optional */ }
@@ -274,7 +271,6 @@ async function loadManifest() {
     if (!localStorage.getItem(PATH_KEY) || !getPathById(localStorage.getItem(PATH_KEY))) {
       setActivePath(DEFAULT_PATH_ID);
     }
-    if (state.vocab) console.info(`[Atelier] vocabulary bank ready: ${state.vocab.total} words by ${state.vocab.levelOrder.join(' / ')}`);
     if (state.paths) console.info(`[Atelier] learning paths ready: ${state.paths.paths.length} paths`);
     renderTypeFilters();
     renderLibrary();
@@ -292,6 +288,12 @@ async function loadManifest() {
       if (selected) await loadLesson(selected, route.tab);
       else showHome();
     }
+    // Heavy banks load after first paint so home/cahier practice is usable immediately.
+    siteFetch('data/vocab.json').then(async vocabResponse => {
+      if (!vocabResponse.ok) return;
+      state.vocab = await vocabResponse.json();
+      console.info(`[Atelier] vocabulary bank ready: ${state.vocab.total} words by ${state.vocab.levelOrder.join(' / ')}`);
+    }).catch(() => {});
   } catch (error) {
     console.error(error);
     showError(`${error.message} Run “npm run build” and serve the dist folder through a local web server. (base: ${SITE_BASE.href})`);
@@ -360,7 +362,11 @@ function filteredLessons() {
 }
 
 function renderTypeFilters() {
-  const types = ['all', ...new Set(state.manifest.lessons.map(item => item.type))];
+  const pool = isFullLibraryEnabled()
+    ? state.manifest.lessons
+    : state.manifest.lessons.filter(item => primaryLessonSlugs().has(item.slug));
+  const types = ['all', ...new Set(pool.map(item => item.type))];
+  if (state.type !== 'all' && !types.includes(state.type)) state.type = 'all';
   $('type-filters').innerHTML = types.map(type => `<button class="filter-chip ${type === state.type ? 'active' : ''}" type="button" data-type="${escapeHtml(type)}">${escapeHtml(type === 'all' ? 'All' : type)}</button>`).join('');
   $('type-filters').querySelectorAll('[data-type]').forEach(button => button.addEventListener('click', () => {
     state.type = button.dataset.type;
@@ -577,7 +583,7 @@ function renderHome() {
     ${lastItem ? `<button class="home-continue" id="home-continue" type="button"><span class="hc-art">${escapeHtml(lastItem.emoji)}</span><span><small>Continue learning</small><b>${escapeHtml(lastItem.title)}</b></span><span class="hc-cta">›</span></button>` : ''}
     <div class="home-shortcuts">
       <a class="home-shortcut" href="#view=practice"><span>🎲</span><div><b>Practice</b><small>games, XP &amp; streak</small></div></a>
-      <a class="home-shortcut" href="#view=library"><span>📚</span><div><b>Books</b><small>PDF &amp; EPUB reader</small></div></a>
+      <a class="home-shortcut" href="#view=library"><span>📚</span><div><b>${isFullLibraryEnabled() ? 'Books' : 'Parcours'}</b><small>${isFullLibraryEnabled() ? 'PDF &amp; EPUB reader' : 'A1 paths &amp; lessons'}</small></div></a>
       <a class="home-shortcut" href="#view=dashboard"><span>🎓</span><div><b>Exams</b><small>your progress &amp; scores</small></div></a>
       <a class="home-shortcut" href="#view=review"><span>🔁</span><div><b>Review</b><small>spaced repetition</small></div></a>
     </div>
@@ -610,6 +616,7 @@ function renderHome() {
       const active = getActivePath();
       const activePath = getPathById(active);
       if (!isFullLibraryEnabled() && activePath?.archived) setActivePath(DEFAULT_PATH_ID);
+      renderTypeFilters();
       renderHome();
       renderLibrary();
     });
@@ -686,13 +693,19 @@ function showLibrary() {
 
 function renderLibraryView() {
   const collections = state.library.collections || [];
-  const totalDocs = collections.reduce((sum, collection) => sum + collection.items.filter(item => item.kind !== 'lesson').length, 0);
+  const showArchive = isFullLibraryEnabled();
+  const totalDocs = showArchive
+    ? collections.reduce((sum, collection) => sum + collection.items.filter(item => item.kind !== 'lesson').length, 0)
+    : 0;
 
   let pathHtml = '';
   if (state.paths?.paths?.length) {
-    const assignedSlugs = new Set(state.paths.paths.flatMap(p => p.lessonSlugs));
-    const unassigned = (state.manifest?.lessons || []).filter(l => !assignedSlugs.has(l.slug));
-    const pathSections = state.paths.paths.map(path => {
+    const visible = visiblePaths();
+    const assignedSlugs = new Set(visible.flatMap(p => p.lessonSlugs));
+    const unassigned = showArchive
+      ? (state.manifest?.lessons || []).filter(l => !assignedSlugs.has(l.slug))
+      : [];
+    let pathSections = visible.map(path => {
       const progress = getPathProgress(path.id);
       const pct = progress.total ? Math.round(progress.completed / progress.total * 100) : 0;
       const pathLessons = path.lessonSlugs.map(slug => state.manifest?.lessons?.find(l => l.slug === slug)).filter(Boolean);
@@ -713,7 +726,7 @@ function renderLibraryView() {
     pathHtml = pathSections;
   }
 
-  const docHtml = collections.map(collection => {
+  const docHtml = showArchive ? collections.map(collection => {
     const docs = collection.items.filter(item => item.kind !== 'lesson');
     const sections = new Map();
     docs.forEach(doc => { if (!sections.has(doc.section)) sections.set(doc.section, []); sections.get(doc.section).push(doc); });
@@ -724,17 +737,19 @@ function renderLibraryView() {
       <div class="library-col-head"><span class="library-emoji">${escapeHtml(collection.emoji)}</span><div><h3>${escapeHtml(collection.label)}</h3><p>${escapeHtml(collection.blurb)}</p></div><span class="mini-stat">${collection.items.length}</span></div>
       ${docBlocks}
     </section>` : '';
-  }).join('');
+  }).join('') : '';
 
-  const allHtml = pathHtml + docHtml || '<div class="empty-section">No library content yet.</div>';
+  const allHtml = (pathHtml + docHtml) || '<div class="empty-section">No library content yet. Activez Bibliothèque complète pour les anciens parcours.</div>';
+  const pathCount = visiblePaths().length;
+  const lessonCount = filteredLessons().length;
   $('library-view').innerHTML = `
     <header class="wordlist-hero">
       <div>
         <span class="kicker">La bibliothèque</span>
-        <h2>Your French bookshelf</h2>
-        <p>Songs, podcasts, books and grammar guides — lessons to study and PDFs to read and mark.</p>
+        <h2>${showArchive ? 'Your French bookshelf' : 'Parcours A1'}</h2>
+        <p>${showArchive ? 'Songs, podcasts, books and grammar guides — lessons to study and PDFs to read and mark.' : 'Cahier, semestre et companion Édito. Activez Bibliothèque complète pour les anciens podcasts / PDFs.'}</p>
       </div>
-      <div class="wordlist-stats"><div class="wordlist-stat"><small>Paths</small><b>${state.paths?.paths?.length || 0}</b></div><div class="wordlist-stat"><small>Lessons</small><b>${state.manifest.lessons.length}</b></div><div class="wordlist-stat"><small>Readings & PDFs</small><b>${totalDocs}</b></div></div>
+      <div class="wordlist-stats"><div class="wordlist-stat"><small>Paths</small><b>${pathCount}</b></div><div class="wordlist-stat"><small>Lessons</small><b>${lessonCount}</b></div><div class="wordlist-stat"><small>Readings & PDFs</small><b>${totalDocs}</b></div></div>
     </header>
     ${renderContinueReading()}
     <div class="library-list">${allHtml}</div>`;

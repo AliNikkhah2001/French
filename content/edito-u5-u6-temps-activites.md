@@ -54,3 +54,8 @@ Pratiquez ici le **futur proche**, **Il fait / Il y a**, et la **journée** (lie
 | Elle ___ se coucher à 23h. | va | vais | allons | allez | A | elle va |
 | Nous ___ nous préparer. | allons | va | vais | vont | A | nous allons |
 | Il y a ___ soleil. | du | de la | des | le | A | du |
+| Demain je ___ au parc. (aller / futur proche) | vais aller | va aller | allez aller | vont aller | A | je vais + inf. |
+| Il ___ beau aujourd’hui. | fait | y a | est | a | A | Il fait + adj. |
+| Il ___ du vent. | y a | fait | est | a | A | Il y a + nom |
+| 08:30 → | Il est huit heures et demie. | Il est huit heures et quart. | Il est neuf heures moins le quart. | Il est huit heures. | A | et demie |
+| Je ___ à 7h. (se réveiller) | me réveille | se réveille | te réveilles | nous réveillons | A | je me |

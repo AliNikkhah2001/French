@@ -55,3 +55,8 @@ Liens utiles : [Livre numérique](https://didierfle.com/produit/edito-a1-edition
 | Est-ce ___ ? | dispo | possible | café | musée | B | possible |
 | Au revoir = | Hello | Goodbye | Please | Maybe | B | goodbye |
 | Corrige : On va à le resto. | On va au resto. | On va à resto. | On va le resto. | On va du resto. | A | au |
+| Je voudrais ___ rendez-vous. | prendre | faire | aller | être | A | prendre RDV |
+| Tu es ___ samedi ? | dispo | possible | heure | date | A | disponible/dispo |
+| On va ___ cinéma ? | au | à le | de | en | A | au = à + le |
+| Refuser une sortie : | Non, je ne suis pas dispo. | Oui, avec plaisir ! | À quelle heure ? | Bonjour ! | A | refus |
+| Demander l’heure du RDV : | À quelle heure ? | Quelle est la date ? | Quel mois ? | Où ? | A | À quelle heure |

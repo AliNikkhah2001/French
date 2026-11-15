@@ -67,3 +67,8 @@ Cette leçon est un **complément original** (pas le texte du manuel) : objectif
 | Article : ___ livre | le | la | les | une | A | masc. |
 | Article : ___ table | le | la | les | un | B | fém. |
 | Tu ___ anglais ? | parles | parle | parlons | parlez | A | tu parles |
+| Comment dit-on “hello” le soir ? | Bonsoir | Bonjour | Salut | À bientôt | A | Bonsoir le soir |
+| Je ___ Ali. (s’appeler) | m’appelle | s’appelle | appelle | suis appelle | A | je m’appelle |
+| Tu ___ iranien. (être) | es | est | suis | sommes | A | tu es |
+| Elle ___ 22 ans. (avoir) | a | as | est | avez | A | elle a |
+| ___ est ton prénom ? | Quel | Quelle | Quels | Quoi | A | Quel + masculin |
