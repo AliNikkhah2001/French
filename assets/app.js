@@ -251,14 +251,7 @@ async function loadManifest() {
     const manifestResponse = await siteFetch('content/index.json');
     if (!manifestResponse.ok) throw new Error(`Content manifest returned ${manifestResponse.status} at ${manifestResponse.url}.`);
     state.manifest = await manifestResponse.json();
-    const analyticsPath = state.manifest.analytics || 'data/analytics.json';
-    try {
-      const analyticsResponse = await siteFetch(analyticsPath);
-      if (analyticsResponse.ok) state.analytics = await analyticsResponse.json();
-      else state.analytics = { totals: { lessons: state.manifest.lessons?.length || 0 } };
-    } catch {
-      state.analytics = { totals: { lessons: state.manifest.lessons?.length || 0 } };
-    }
+    state.analytics = { totals: { lessons: state.manifest.lessons?.length || 0 } };
     try {
       const libraryResponse = await siteFetch('content/library.json');
       if (libraryResponse.ok) state.library = await libraryResponse.json();
@@ -289,6 +282,11 @@ async function loadManifest() {
       else showHome();
     }
     // Heavy banks load after first paint so home/cahier practice is usable immediately.
+    const analyticsPath = state.manifest.analytics || 'data/analytics.json';
+    siteFetch(analyticsPath).then(async analyticsResponse => {
+      if (!analyticsResponse.ok) return;
+      state.analytics = await analyticsResponse.json();
+    }).catch(() => {});
     siteFetch('data/vocab.json').then(async vocabResponse => {
       if (!vocabResponse.ok) return;
       state.vocab = await vocabResponse.json();
