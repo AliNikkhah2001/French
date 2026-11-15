@@ -57,6 +57,12 @@ Explain the pattern with a short example.
 
 # Exam practice
 
-| Question | A | B | C | D | Answer | Explanation |
-|---|---|---|---|---|---|---|
-| What does “bonjour” mean? | goodbye | thank you | hello | please | C | Bonjour is a greeting. |
+Use a **Type** column for mixed formats: `mc` (default), `fill`, `order`, `write`.
+For fill/order/write, leave A–D empty. Multiple accepted answers: separate with `\|` in Answer.
+
+| Type | Question | A | B | C | D | Answer | Explanation |
+|---|---|---|---|---|---|---|---|
+| mc | What does “bonjour” mean? | goodbye | thank you | hello | please | C | Bonjour is a greeting. |
+| fill | Complète : Je ___ (s’appeler) Paul. |  |  |  |  | m’appelle\|m'appelle | pronominal |
+| order | Remettez dans l’ordre |  |  |  |  | Bonjour je-voudrais Au-revoir | chips = words |
+| write | Présentez-vous en 2 phrases. |  |  |  |  | Je m’appelle Paul. J’habite à Paris. | exemple |

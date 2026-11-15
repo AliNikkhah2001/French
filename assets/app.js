@@ -9,8 +9,9 @@ const LAST_KEY = 'atelier-last-lesson';
 const UNLOCK_KEY = 'atelier-unlocked-lessons';
 const PATH_KEY = 'atelier-active-path';
 const FULL_LIBRARY_KEY = 'atelier-full-library';
-const DEFAULT_PATH_ID = 'semestre-a1';
-const PRIMARY_PATH_IDS = new Set(['semestre-a1', 'edito-a1-companion']);
+const CUSTOM_PACKS_KEY = 'atelier-custom-packs-v1';
+const DEFAULT_PATH_ID = 'cahier-classe';
+const PRIMARY_PATH_IDS = new Set(['cahier-classe', 'semestre-a1', 'edito-a1-companion']);
 const state = {
   manifest: null,
   analytics: null,
@@ -269,6 +270,7 @@ async function loadManifest() {
       const pathsResponse = await siteFetch('content/paths.json');
       if (pathsResponse.ok) state.paths = await pathsResponse.json();
     } catch { /* paths optional */ }
+    mergeCustomPacksIntoState();
     if (!localStorage.getItem(PATH_KEY) || !getPathById(localStorage.getItem(PATH_KEY))) {
       setActivePath(DEFAULT_PATH_ID);
     }
@@ -518,10 +520,11 @@ function renderPathLibrary() {
   return `
     <section class="home-library">
       <h3>Parcours A1</h3>
-      <p>Semestre + companion Édito. Les anciens podcasts restent disponibles via la bibliothèque complète.</p>
+      <p>Cahier interactif + semestre + companion Édito. Les anciens podcasts restent via la bibliothèque complète.</p>
       <div class="path-cards">${pathCards}</div>
       ${archiveToggle}
       ${exploreCount ? `<div class="explore-link"><a href="#view=library">🔍 Explore ${exploreCount} more lessons in the library</a></div>` : ''}
+      ${renderCustomPackPanel()}
       <div class="edito-links narrow-panel">
         <strong>Livre Édito A1 (légal)</strong>
         <p>Lisez le manuel à côté de l’app — nous ne redistribuons pas le PDF.</p>
@@ -595,6 +598,7 @@ function renderHome() {
     const item = state.manifest.lessons.find(l => l.slug === button.dataset.pathLesson);
     if (item) await loadLesson(item);
   }));
+  bindCustomPackPanel($('home-view'));
   $('home-view').querySelectorAll('[data-goto-path]').forEach(button => button.addEventListener('click', () => {
     setActivePath(button.dataset.gotoPath);
     renderHome();
@@ -2212,10 +2216,16 @@ async function loadLesson(item, requestedTab = null) {
   if (!item) return;
   showLoading();
   try {
-    const response = await siteFetch(item.path);
-    if (!response.ok) throw new Error(`Lesson returned ${response.status} at ${response.url}.`);
     state.selected = item;
-    state.lesson = parseLesson(await response.text());
+    if (item.custom) {
+      const pack = getCustomPacks().find(p => p.id === item.customId || p.slug === item.slug);
+      if (!pack) throw new Error('Custom homework pack not found.');
+      state.lesson = customPackToLesson(pack);
+    } else {
+      const response = await siteFetch(item.path);
+      if (!response.ok) throw new Error(`Lesson returned ${response.status} at ${response.url}.`);
+      state.lesson = parseLesson(await response.text());
+    }
     localStorage.setItem(LAST_KEY, item.slug);
     state.wordType = 'all';
     state.cardIndex = 0;
@@ -2540,17 +2550,29 @@ function mountOrder(index) {
   }
 }
 
+function answerAlternatives(answer) {
+  return String(answer || '').split('|').map(part => normalize(part.trim())).filter(Boolean);
+}
+
 function gradeAnswer(question, element) {
   if (question.type === 'mc') {
     const selected = element.querySelector('input:checked')?.value;
-    return selected === question.answer.toUpperCase();
+    return selected === String(question.answer || '').split('|')[0].trim().toUpperCase();
   }
   if (question.type === 'order') {
     const words = [...element.querySelectorAll('.order-target .order-chip')].map(node => node.textContent.trim()).join(' ');
-    return normalize(words) === normalize(question.answer);
+    return answerAlternatives(question.answer).includes(normalize(words));
   }
   const value = element.querySelector('.fill-input, .write-input')?.value || '';
-  return normalize(value) === normalize(question.answer);
+  const alts = answerAlternatives(question.answer);
+  if (!alts.length) return false;
+  // write: accept if non-empty (open production) when explanation marks example-only
+  if (question.type === 'write' && value.trim().length >= 12) {
+    if (alts.some(alt => normalize(value) === alt)) return true;
+    // soft pass for open writing when student wrote something substantial
+    return value.trim().split(/\s+/).length >= 4;
+  }
+  return alts.includes(normalize(value));
 }
 
 function checkQuiz() {
@@ -2562,7 +2584,8 @@ function checkQuiz() {
     element.classList.remove('correct', 'incorrect'); element.classList.add(isCorrect ? 'correct' : 'incorrect');
     if (isCorrect) score += 1;
     const feedback = element.querySelector('.question-feedback'); feedback.hidden = false;
-    const shownAnswer = question.type === 'mc' ? escapeHtml(correct.toUpperCase()) : `<b>${inlineMarkdown(escapeHtml(correct))}</b>`;
+    const primary = String(correct || '').split('|')[0].trim();
+    const shownAnswer = question.type === 'mc' ? escapeHtml(primary.toUpperCase()) : `<b>${inlineMarkdown(escapeHtml(primary))}</b>`;
     feedback.innerHTML = `${isCorrect ? '✓ Correct.' : `Not quite. The answer is ${shownAnswer}.`} ${inlineMarkdown(question.explanation || '')}`;
   });
   const progress = getProgress(); progress.quizAttempted = true; progress.quizScore = score;
@@ -2668,6 +2691,289 @@ function showDashboard() {
   state.view = 'dashboard';
   document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
   $('dashboard-button').classList.add('active');
+}
+
+/* ------------------- Custom homework packs (dynamic) ------------------- */
+
+function getCustomPacks() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_PACKS_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveCustomPacks(packs) {
+  localStorage.setItem(CUSTOM_PACKS_KEY, JSON.stringify(packs));
+}
+
+function slugifyCustom(title) {
+  const base = normalize(title).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'devoir';
+  return `custom-${base}`.slice(0, 48);
+}
+
+function customPackToLesson(pack) {
+  const flashcards = (pack.flashcards || []).map(card => ({
+    front: card.front || '',
+    back: card.back || '',
+    hint: card.hint || ''
+  }));
+  const vocabulary = (pack.vocabulary || []).map(row => ({
+    french: row.french || row.front || '',
+    english: row.english || row.back || '',
+    type: row.type || 'vocab',
+    note: row.note || ''
+  }));
+  const exam = (pack.exam || []).map(row => {
+    const type = String(row.type || 'mc').toLowerCase();
+    let qtype = 'mc';
+    if (type === 'fill') qtype = 'fill';
+    else if (type === 'order') qtype = 'order';
+    else if (type === 'write') qtype = 'write';
+    return {
+      type: qtype,
+      question: row.question || '',
+      options: qtype === 'mc'
+        ? ['a', 'b', 'c', 'd'].map(letter => ({ key: letter.toUpperCase(), text: row[letter] || row[letter.toUpperCase()] || '' }))
+        : [],
+      answer: String(row.answer || '').trim(),
+      explanation: row.explanation || ''
+    };
+  });
+  return {
+    metadata: {
+      title: pack.title,
+      slug: pack.slug,
+      type: 'guide',
+      level: pack.level || 'A1',
+      emoji: pack.emoji || '📝',
+      description: pack.description || '',
+      custom: true
+    },
+    overview: `<p>${escapeHtml(pack.description || 'Devoir personnalisé.')}</p><p><em>Pack local — stocké sur cet appareil.</em></p>`,
+    transcript: [],
+    grammar: pack.grammar ? [{ title: 'Notes', html: `<p>${escapeHtml(pack.grammar)}</p>` }] : [],
+    vocabulary,
+    collocations: [],
+    notes: '',
+    flashcards,
+    examGuide: '',
+    exam,
+    extras: []
+  };
+}
+
+function customPackManifestItem(pack) {
+  return {
+    title: pack.title,
+    slug: pack.slug,
+    type: 'guide',
+    level: pack.level || 'A1',
+    emoji: pack.emoji || '📝',
+    description: pack.description || 'Devoir ajouté par vous',
+    author: 'Moi',
+    duration: pack.duration || '15 min',
+    order: pack.order || 900,
+    tags: ['custom', 'devoir', ...(pack.tags || [])],
+    path: `custom://${pack.slug}`,
+    custom: true,
+    customId: pack.id,
+    draft: false
+  };
+}
+
+function mergeCustomPacksIntoState() {
+  if (!state.manifest) return;
+  const packs = getCustomPacks();
+  state.manifest.lessons = (state.manifest.lessons || []).filter(lesson => !lesson.custom);
+  if (state.paths?.paths) {
+    state.paths.paths = state.paths.paths.filter(path => path.id !== 'mes-devoirs');
+  }
+  if (!packs.length) return;
+  const items = packs.map(customPackManifestItem);
+  state.manifest.lessons = [...items, ...state.manifest.lessons];
+  if (!state.paths) state.paths = { version: 1, paths: [] };
+  if (!Array.isArray(state.paths.paths)) state.paths.paths = [];
+  state.paths.paths.unshift({
+    id: 'mes-devoirs',
+    title: 'Mes devoirs',
+    subtitle: 'Ajoutés sur cet appareil',
+    emoji: '➕',
+    description: 'Homeworks, flashcards et examens que vous avez créés ici.',
+    level: 'A1',
+    archived: false,
+    lessonSlugs: packs.map(pack => pack.slug)
+  });
+  PRIMARY_PATH_IDS.add('mes-devoirs');
+}
+
+function parseFlashcardLines(text) {
+  return String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
+    const parts = line.split(/\s*[—–\-|=]\s*/);
+    return { front: parts[0] || '', back: parts[1] || '', hint: parts[2] || '' };
+  }).filter(card => card.front && card.back);
+}
+
+function parseExamLines(text) {
+  return String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
+    // fill: FILL | question | answer | explanation?
+    // mc: MC | question | A | B | C | D | AnswerLetter | explanation?
+    // order: ORDER | question | word1 word2 word3 | explanation?
+    // write: WRITE | question | exampleAnswer | explanation?
+    const parts = line.split(/\s*\|\s*/);
+    const kind = (parts[0] || 'FILL').toUpperCase();
+    if (kind === 'MC' || kind === 'QCM') {
+      return {
+        type: 'mc',
+        question: parts[1] || '',
+        a: parts[2] || '',
+        b: parts[3] || '',
+        c: parts[4] || '',
+        d: parts[5] || '',
+        answer: (parts[6] || 'A').trim().toUpperCase().slice(0, 1),
+        explanation: parts[7] || ''
+      };
+    }
+    if (kind === 'ORDER') {
+      return { type: 'order', question: parts[1] || '', answer: parts[2] || '', explanation: parts[3] || '' };
+    }
+    if (kind === 'WRITE') {
+      return { type: 'write', question: parts[1] || '', answer: parts[2] || '', explanation: parts[3] || '' };
+    }
+    if (kind === 'FILL' || kind === 'FILLIN' || kind === 'COMPLETER') {
+      return { type: 'fill', question: parts[1] || '', answer: parts[2] || '', explanation: parts[3] || '' };
+    }
+    // bare "question | answer" without type prefix
+    return { type: 'fill', question: parts[0] || '', answer: parts[1] || '', explanation: parts[2] || '' };
+  }).filter(row => row.question && row.answer);
+}
+
+function addCustomPackFromForm() {
+  const title = $('custom-pack-title')?.value.trim();
+  if (!title) {
+    showToast('Donnez un titre au devoir.', 'error');
+    return;
+  }
+  const description = $('custom-pack-desc')?.value.trim() || 'Devoir personnalisé';
+  const flashcards = parseFlashcardLines($('custom-pack-flash')?.value);
+  const exam = parseExamLines($('custom-pack-exam')?.value);
+  const vocabFromFlash = flashcards.map(card => ({ french: card.front, english: card.back, type: 'vocab', note: card.hint }));
+  if (!flashcards.length && !exam.length) {
+    showToast('Ajoutez au moins des flashcards ou des questions.', 'error');
+    return;
+  }
+  const packs = getCustomPacks();
+  const id = `pack-${Date.now()}`;
+  let slug = slugifyCustom(title);
+  if (packs.some(pack => pack.slug === slug) || state.manifest.lessons.some(lesson => lesson.slug === slug)) {
+    slug = `${slug}-${String(Date.now()).slice(-4)}`;
+  }
+  packs.unshift({
+    id,
+    slug,
+    title,
+    description,
+    emoji: '📝',
+    level: 'A1',
+    duration: '15 min',
+    flashcards,
+    vocabulary: vocabFromFlash,
+    exam,
+    createdAt: Date.now()
+  });
+  saveCustomPacks(packs);
+  mergeCustomPacksIntoState();
+  recordActivity('custom-pack');
+  showToast(`Devoir « ${title} » ajouté.`, 'success');
+  renderHome();
+  const item = state.manifest.lessons.find(lesson => lesson.slug === slug);
+  if (item) loadLesson(item, 'exam');
+}
+
+function deleteCustomPack(slug) {
+  saveCustomPacks(getCustomPacks().filter(pack => pack.slug !== slug));
+  mergeCustomPacksIntoState();
+  showToast('Devoir supprimé.', 'success');
+  renderHome();
+}
+
+function exportCustomPacks() {
+  const blob = new Blob([JSON.stringify(getCustomPacks(), null, 2)], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `atelier-custom-packs-${localDateKey()}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function importCustomPacksJson(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const incoming = Array.isArray(data) ? data : data.packs;
+      if (!Array.isArray(incoming)) throw new Error('Invalid JSON');
+      const packs = getCustomPacks();
+      incoming.forEach(pack => {
+        if (!pack?.title) return;
+        const id = pack.id || `pack-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        let slug = pack.slug || slugifyCustom(pack.title);
+        if (packs.some(existing => existing.slug === slug)) slug = `${slug}-${String(Date.now()).slice(-4)}`;
+        packs.unshift({ ...pack, id, slug, createdAt: pack.createdAt || Date.now() });
+      });
+      saveCustomPacks(packs);
+      mergeCustomPacksIntoState();
+      showToast(`Imported ${incoming.length} pack(s).`, 'success');
+      renderHome();
+    } catch {
+      showToast('Could not import JSON.', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function renderCustomPackPanel() {
+  const packs = getCustomPacks();
+  const list = packs.length
+    ? `<ul class="custom-pack-list">${packs.map(pack => `<li><button type="button" data-open-custom="${escapeHtml(pack.slug)}">${escapeHtml(pack.emoji || '📝')} ${escapeHtml(pack.title)}</button> <button type="button" class="icon-action danger" data-delete-custom="${escapeHtml(pack.slug)}" title="Supprimer">✕</button></li>`).join('')}</ul>`
+    : '<p class="muted">Aucun devoir perso pour l’instant.</p>';
+  return `
+    <section class="custom-pack-panel narrow-panel">
+      <strong>➕ Ajouter un devoir / matériel</strong>
+      <p>Flashcards + questions interactives (fill / QCM / ordre). Stocké sur cet appareil — exportez le JSON pour le garder.</p>
+      <form id="custom-pack-form" class="custom-pack-form" autocomplete="off">
+        <input id="custom-pack-title" type="text" required maxlength="80" placeholder="Titre du devoir (ex. Devoir semaine 6)" aria-label="Titre">
+        <input id="custom-pack-desc" type="text" maxlength="160" placeholder="Description courte" aria-label="Description">
+        <label class="field-label">Flashcards <small>(une par ligne : français — anglais — hint)</small>
+          <textarea id="custom-pack-flash" rows="3" placeholder="ma mère — my mother — possessif&#10;Il fait beau — It's nice out — météo"></textarea>
+        </label>
+        <label class="field-label">Exercices <small>(une par ligne)</small>
+          <textarea id="custom-pack-exam" rows="4" placeholder="FILL | Je ___ (se lever) | me lève&#10;MC | 08:30 | et quart | et demie | moins le quart | huit heures | B | demie&#10;ORDER | Dialogue | Bonjour RDV Oui Au-revoir&#10;WRITE | Présente ta famille | Voici ma famille."></textarea>
+        </label>
+        <button class="button blue" type="submit">Créer le devoir interactif</button>
+      </form>
+      <div class="custom-pack-tools">
+        <button class="button paper small" type="button" id="export-custom-packs">Exporter JSON</button>
+        <label class="button paper small" style="cursor:pointer">Importer JSON<input type="file" id="import-custom-packs" accept="application/json" hidden></label>
+      </div>
+      ${list}
+    </section>`;
+}
+
+function bindCustomPackPanel(root = document) {
+  root.querySelector('#custom-pack-form')?.addEventListener('submit', event => {
+    event.preventDefault();
+    addCustomPackFromForm();
+  });
+  root.querySelector('#export-custom-packs')?.addEventListener('click', exportCustomPacks);
+  root.querySelector('#import-custom-packs')?.addEventListener('change', importCustomPacksJson);
+  root.querySelectorAll('[data-open-custom]').forEach(button => button.addEventListener('click', async () => {
+    const item = state.manifest.lessons.find(lesson => lesson.slug === button.dataset.openCustom);
+    if (item) await loadLesson(item);
+  }));
+  root.querySelectorAll('[data-delete-custom]').forEach(button => button.addEventListener('click', () => {
+    if (confirm('Supprimer ce devoir ?')) deleteCustomPack(button.dataset.deleteCustom);
+  }));
 }
 
 /* ------------------- Word list & spaced repetition ------------------- */

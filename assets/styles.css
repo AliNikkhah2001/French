@@ -628,3 +628,35 @@ html.is-standalone .home-library .search-box { top: calc(48px + env(safe-area-in
 .edito-links p { margin: 6px 0; font-size: .8rem; color: var(--muted); }
 .edito-links .button { margin: 4px 6px 4px 0; display: inline-flex; }
 .explore-link { margin-top: 12px; font-size: .85rem; }
+.custom-pack-panel { margin-top: 18px; }
+.custom-pack-panel .muted { color: var(--muted); font-size: .85rem; }
+.custom-pack-form { display: grid; gap: 10px; margin-top: 10px; }
+.custom-pack-form input,
+.custom-pack-form textarea {
+  width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+  font: inherit; background: var(--paper); color: var(--ink); min-height: 44px; box-sizing: border-box;
+}
+.custom-pack-form textarea { min-height: 88px; resize: vertical; }
+.custom-pack-form .field-label { display: grid; gap: 6px; font-size: .82rem; font-weight: 650; color: var(--ink); }
+.custom-pack-form .field-label small { font-weight: 500; color: var(--muted); }
+.custom-pack-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.custom-pack-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.custom-pack-list li { display: flex; align-items: center; gap: 8px; }
+.custom-pack-list li > button:first-child {
+  flex: 1; text-align: left; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--paper); font: inherit; cursor: pointer;
+}
+.quiz-question[data-qtype="fill"] .fill-input,
+.quiz-question[data-qtype="write"] .write-input {
+  width: 100%; min-height: 44px; margin-top: 8px; padding: 12px; border-radius: 12px;
+  border: 1px solid var(--line); font: inherit; box-sizing: border-box;
+}
+.quiz-question .order-area { display: grid; gap: 10px; margin-top: 8px; }
+.quiz-question .order-src, .quiz-question .order-target {
+  display: flex; flex-wrap: wrap; gap: 8px; min-height: 44px; padding: 8px;
+  border: 1px dashed var(--line); border-radius: 12px;
+}
+.quiz-question .order-chip {
+  min-height: 40px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--cream, #f6f1e7); font: inherit; cursor: pointer;
+}

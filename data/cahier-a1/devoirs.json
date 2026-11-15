@@ -1,0 +1,353 @@
+{
+  "version": 1,
+  "source": "Francais_A1-1_Cahier_Complet (Blank 12 / 14 / 14-1 / 15 / 151)",
+  "packs": [
+    {
+      "slug": "cahier-d1-heure-date",
+      "title": "Devoir 1 — Heure, date, jours, saisons",
+      "emoji": "🕐",
+      "description": "Exercices interactifs du cahier : dire l’heure, écrire les dates, ordonner les jours, associer les saisons.",
+      "duration": "30 min",
+      "order": 1,
+      "tags": "A1, cahier, heure, date, jours, saisons",
+      "overview": "Version **interactive** du Devoir 1 du cahier de classe. Formats : **compléter** (fill), **QCM** (mc), **ordonner** (order). Travaillez sans regarder le PDF — les corrigés s’affichent après « Check my answers ».",
+      "grammar": "## Dire l’heure\n\n- **Il est** + heure · **à** + heure pour situer un événement\n- **et quart** (:15) · **et demie** (:30) · **moins le quart** (:45)\n\n## Dates & jours\n\n- **le** + nombre + mois · **le premier** pour le 1er\n- Suite : lundi → mardi → mercredi → jeudi → vendredi → samedi → dimanche",
+      "vocabulary": [
+        { "french": "Quelle heure est-il ?", "english": "What time is it?", "type": "expression", "note": "" },
+        { "french": "et quart", "english": "quarter past", "type": "expression", "note": ":15" },
+        { "french": "et demie", "english": "half past", "type": "expression", "note": ":30" },
+        { "french": "moins le quart", "english": "quarter to", "type": "expression", "note": ":45" },
+        { "french": "aujourd’hui / demain / hier", "english": "today / tomorrow / yesterday", "type": "adverb", "note": "" },
+        { "french": "printemps / été / automne / hiver", "english": "spring / summer / autumn / winter", "type": "noun", "note": "" }
+      ],
+      "flashcards": [
+        { "front": "07:00", "back": "Il est sept heures.", "hint": "Il est…" },
+        { "front": "08:15", "back": "Il est huit heures et quart.", "hint": "et quart" },
+        { "front": "10:30", "back": "Il est dix heures et demie.", "hint": "et demie" },
+        { "front": "12:45", "back": "Il est treize heures moins le quart.", "hint": "moins le quart" },
+        { "front": "14/02", "back": "le quatorze février", "hint": "le + nombre" },
+        { "front": "01/01", "back": "le premier janvier", "hint": "premier" },
+        { "front": "Après mardi", "back": "mercredi", "hint": "jour" },
+        { "front": "Après l’hiver", "back": "le printemps", "hint": "saison" }
+      ],
+      "exam": [
+        { "type": "fill", "question": "07:00 → Quelle heure est-il ?", "answer": "Il est sept heures.|Il est 7 heures.", "explanation": "7h = sept heures" },
+        { "type": "fill", "question": "08:15 → Quelle heure est-il ?", "answer": "Il est huit heures et quart.|Il est 8 heures et quart.", "explanation": ":15 = et quart" },
+        { "type": "fill", "question": "10:30 → Quelle heure est-il ?", "answer": "Il est dix heures et demie.|Il est 10 heures et demie.", "explanation": ":30 = et demie" },
+        { "type": "fill", "question": "12:45 → Quelle heure est-il ?", "answer": "Il est treize heures moins le quart.|Il est une heure moins le quart.|Il est 13 heures moins le quart.", "explanation": ":45 = moins le quart" },
+        { "type": "mc", "question": "08:30 — Choisissez.", "a": "huit heures et quart", "b": "huit heures et demie", "c": "neuf heures moins le quart", "d": "huit heures vingt", "answer": "B", "explanation": "30 → et demie" },
+        { "type": "mc", "question": "18:45 — Choisissez.", "a": "dix-huit heures et quart", "b": "dix-huit heures et demie", "c": "dix-neuf heures moins le quart", "d": "dix-huit heures", "answer": "C", "explanation": "45 → moins le quart" },
+        { "type": "fill", "question": "Complète : Le cours commence ___ 9h. (préposition)", "answer": "à|a", "explanation": "toujours « à » + heure" },
+        { "type": "fill", "question": "Complète : Le film commence ___ 20h30.", "answer": "à|a", "explanation": "à + heure" },
+        { "type": "fill", "question": "Le cours est à 9h. Transforme en question.", "answer": "À quelle heure commence le cours ?|A quelle heure commence le cours ?", "explanation": "À quelle heure… ?" },
+        { "type": "fill", "question": "14/02 → Écris la date en français.", "answer": "le quatorze février", "explanation": "le + nombre + mois" },
+        { "type": "fill", "question": "25/12 → Écris la date en français.", "answer": "le vingt-cinq décembre", "explanation": "Noël" },
+        { "type": "fill", "question": "01/01 → Écris la date en français.", "answer": "le premier janvier", "explanation": "le premier (pas le un)" },
+        { "type": "fill", "question": "lundi → ___ → mercredi", "answer": "mardi", "explanation": "suite des jours" },
+        { "type": "fill", "question": "Après mardi ?", "answer": "mercredi", "explanation": "après" },
+        { "type": "fill", "question": "Avant vendredi ?", "answer": "jeudi", "explanation": "avant" },
+        { "type": "mc", "question": "Aujourd’hui = jeudi. Demain, c’est…", "a": "mercredi", "b": "vendredi", "c": "samedi", "d": "lundi", "answer": "B", "explanation": "demain" },
+        { "type": "mc", "question": "Aujourd’hui = jeudi. Hier, c’était…", "a": "mercredi", "b": "vendredi", "c": "mardi", "d": "dimanche", "answer": "A", "explanation": "hier" },
+        { "type": "mc", "question": "Associe : printemps", "a": "Il fait chaud.", "b": "Il neige.", "c": "Il y a beaucoup de fleurs.", "d": "Les feuilles tombent.", "answer": "C", "explanation": "fleurs" },
+        { "type": "mc", "question": "Associe : hiver", "a": "Il fait chaud.", "b": "Il neige.", "c": "Il y a des fleurs.", "d": "Les feuilles tombent.", "answer": "B", "explanation": "neige" },
+        { "type": "fill", "question": "Après l’hiver → …", "answer": "le printemps|printemps", "explanation": "suite des saisons" },
+        { "type": "write", "question": "Organise une soirée : écris 1 phrase avec un jour + une date + une heure.", "answer": "On se retrouve vendredi le 20 mars à 20 heures.", "explanation": "Exemple possible — toute phrase claire avec jour + date + heure est OK pour l’entraînement." }
+      ]
+    },
+    {
+      "slug": "cahier-d2-rdv-sorties",
+      "title": "Devoir 2 — RDV, dates et sorties",
+      "emoji": "📅",
+      "description": "Dates en lettres, dialogues chez le médecin, proposer une sortie, corriger des erreurs.",
+      "duration": "30 min",
+      "order": 2,
+      "tags": "A1, cahier, rendez-vous, sorties, dates",
+      "overview": "Devoir 2 du cahier en mode interactif : dates, **prendre rendez-vous**, dialogues à **remettre en ordre**, propositions de sortie, et **corrections d’erreurs**.",
+      "grammar": "## Dates\n\n- 1 janvier → **le premier janvier** · 14 février → **le quatorze février**\n\n## Rendez-vous\n\n- **prendre rendez-vous** · **je suis disponible / dispo** · **est-ce possible ?**\n- **rendez-vous pour** mardi (pas *de*)",
+      "vocabulary": [
+        { "french": "prendre rendez-vous", "english": "to book an appointment", "type": "expression", "note": "" },
+        { "french": "disponible / dispo", "english": "available / free", "type": "adj", "note": "" },
+        { "french": "Est-ce possible ?", "english": "Is it possible?", "type": "expression", "note": "" },
+        { "french": "On va au cinéma ?", "english": "Shall we go to the cinema?", "type": "expression", "note": "" },
+        { "french": "Oui, avec plaisir !", "english": "Yes, with pleasure!", "type": "expression", "note": "" },
+        { "french": "Désolé…", "english": "Sorry…", "type": "expression", "note": "refuser" }
+      ],
+      "flashcards": [
+        { "front": "1 janvier", "back": "le premier janvier", "hint": "premier" },
+        { "front": "book appointment", "back": "prendre rendez-vous", "hint": "prendre" },
+        { "front": "Are you free (vous)?", "back": "Est-ce que vous êtes disponible ?", "hint": "disponible" },
+        { "front": "Suggest a walk", "back": "On fait une balade ?", "hint": "balade" },
+        { "front": "Accept", "back": "Oui, avec plaisir !", "hint": "plaisir" },
+        { "front": "Refuse Saturday", "back": "Non, je ne suis pas dispo samedi.", "hint": "ne…pas" }
+      ],
+      "exam": [
+        { "type": "fill", "question": "Écrivez : 1 janvier", "answer": "le premier janvier", "explanation": "premier" },
+        { "type": "fill", "question": "Écrivez : 14 février", "answer": "le quatorze février", "explanation": "" },
+        { "type": "fill", "question": "Écrivez : 25 décembre", "answer": "le vingt-cinq décembre", "explanation": "Noël" },
+        { "type": "fill", "question": "Premier mois de l’année ?", "answer": "janvier", "explanation": "" },
+        { "type": "fill", "question": "Dernier mois de l’année ?", "answer": "décembre|decembre", "explanation": "" },
+        { "type": "fill", "question": "Noël = le ___ décembre", "answer": "25|vingt-cinq|le 25", "explanation": "25" },
+        { "type": "fill", "question": "Dialogue patient : Je voudrais ___.", "answer": "prendre rendez-vous", "explanation": "" },
+        { "type": "fill", "question": "Patient : Oui, ___.", "answer": "je suis disponible", "explanation": "" },
+        { "type": "fill", "question": "Secrétaire : À 15 heures, ___ ?", "answer": "est-ce possible|est-ce possible ?", "explanation": "" },
+        { "type": "order", "question": "Remettez le dialogue 1 dans l’ordre (mots = numéros de répliques).", "answer": "4 2 3 1", "explanation": "Bonjour ! → Je voudrais RDV → Dispo mercredi ? → Oui à 11h" },
+        { "type": "order", "question": "Dialogue 2 : (1)À quelle heure ? (2)Bonjour, RDV vendredi. (3)À 16h, possible ? (4)Oui, disponible. Ordre ?", "answer": "2 1 3 4", "explanation": "2→1→3→4" },
+        { "type": "mc", "question": "On va au cinéma ? → réponse typique", "a": "Oui, je suis dispo samedi.", "b": "Non, pas disponible vendredi.", "c": "Oui, avec plaisir !", "d": "Désolé, pas dispo demain.", "answer": "C", "explanation": "E dans le cahier" },
+        { "type": "mc", "question": "Tu es dispo samedi ?", "a": "Oui, je suis dispo samedi.", "b": "Non, pas disponible vendredi.", "c": "Oui, bonne idée !", "d": "Désolé, pas demain.", "answer": "A", "explanation": "" },
+        { "type": "mc", "question": "Tu es disponible vendredi ?", "a": "Oui, avec plaisir !", "b": "Non, je ne suis pas disponible vendredi.", "c": "Oui, bonne idée !", "d": "Oui, je suis dispo samedi.", "answer": "B", "explanation": "" },
+        { "type": "fill", "question": "Corrige : Je voudrais prendre un rendez-vous de mardi.", "answer": "Je voudrais prendre rendez-vous pour mardi.|Je voudrais prendre un rendez-vous pour mardi.", "explanation": "pour mardi" },
+        { "type": "fill", "question": "Corrige : Non, je ne suis dispo pas.", "answer": "Non, je ne suis pas dispo.|Non, je ne suis pas disponible.", "explanation": "ne…pas" },
+        { "type": "fill", "question": "Corrige : On va à le musée ?", "answer": "On va au musée ?", "explanation": "à + le = au" },
+        { "type": "mc", "question": "Vous téléphonez au médecin. Vous dites…", "a": "Salut !", "b": "Bonjour !", "c": "À plus !", "d": "Ciao", "answer": "B", "explanation": "formel" },
+        { "type": "mc", "question": "Proposer le musée…", "a": "Est-ce que vous êtes disponible ?", "b": "On va au musée ?", "c": "À quelle heure ?", "d": "Quelle est la date ?", "answer": "B", "explanation": "" },
+        { "type": "write", "question": "Écrivez 4–6 répliques : dialogue courte pour un rendez-vous chez le médecin (jeudi).", "answer": "Bonjour ! Je voudrais prendre rendez-vous. — Est-ce que vous êtes disponible jeudi ? — Oui, je suis disponible. À quelle heure ? — À 15 heures, est-ce possible ? — Oui. Au revoir !", "explanation": "Exemple modèle" }
+      ]
+    },
+    {
+      "slug": "cahier-d3-journee",
+      "title": "Devoir 3 — Ma journée (pronominaux)",
+      "emoji": "🌅",
+      "description": "Conjugaison des verbes pronominaux, faire + sport, QCM et production.",
+      "duration": "25 min",
+      "order": 3,
+      "tags": "A1, cahier, pronominaux, routine, sport",
+      "overview": "Devoir 3 interactif : conjuguez **se réveiller / se doucher / se lever…**, choisissez la bonne forme, et complétez avec **faire** + sport.",
+      "grammar": "## Verbes pronominaux (présent)\n\n| je | tu | il/elle | nous | vous | ils/elles |\n|---|---|---|---|---|---|\n| me | te | se | nous | vous | se |\n\nEx. : *je me lève* · *tu te douches* · *nous nous lavons*\n\n## Faire + sport\n\n*faire **du** jogging* · *faire **de la** musculation* · *faire **de la** course à pied*",
+      "vocabulary": [
+        { "french": "se réveiller", "english": "to wake up", "type": "verb", "note": "pronominal" },
+        { "french": "se lever", "english": "to get up", "type": "verb", "note": "" },
+        { "french": "se doucher", "english": "to shower", "type": "verb", "note": "" },
+        { "french": "se coucher", "english": "to go to bed", "type": "verb", "note": "" },
+        { "french": "se brosser les dents", "english": "to brush one's teeth", "type": "verb", "note": "" },
+        { "french": "faire du jogging", "english": "to go jogging", "type": "expression", "note": "du" }
+      ],
+      "flashcards": [
+        { "front": "je + se réveiller", "back": "je me réveille", "hint": "me" },
+        { "front": "tu + se doucher", "back": "tu te douches", "hint": "te" },
+        { "front": "il + se lever", "back": "il se lève", "hint": "è" },
+        { "front": "nous + se laver", "back": "nous nous lavons", "hint": "nous nous" },
+        { "front": "vous + se coucher", "back": "vous vous couchez", "hint": "vous vous" },
+        { "front": "jogging", "back": "faire du jogging", "hint": "du" }
+      ],
+      "exam": [
+        { "type": "fill", "question": "Je ___ à 7 heures. (se réveiller)", "answer": "me réveille", "explanation": "je me" },
+        { "type": "fill", "question": "Tu ___ le matin. (se doucher)", "answer": "te douches", "explanation": "tu te" },
+        { "type": "fill", "question": "Nous ___ avant de dormir. (se laver)", "answer": "nous nous lavons|nous lavons", "explanation": "nous nous lavons" },
+        { "type": "fill", "question": "Il ___ à 8 heures. (se lever)", "answer": "se lève|se leve", "explanation": "è" },
+        { "type": "fill", "question": "Vous ___ à quelle heure ? (se coucher)", "answer": "vous vous couchez|vous couchez", "explanation": "vous vous couchez" },
+        { "type": "mc", "question": "Le matin, je …", "a": "me réveille", "b": "te réveilles", "c": "se réveille", "d": "nous réveillons", "answer": "A", "explanation": "je → me" },
+        { "type": "mc", "question": "Elle fait …", "a": "du jogging", "b": "de la jogging", "c": "de jogging", "d": "le jogging", "answer": "A", "explanation": "jogging masculin → du" },
+        { "type": "mc", "question": "Pour faire du sport, je …", "a": "me douche", "b": "fais de la musculation", "c": "se couche", "d": "te laves", "answer": "B", "explanation": "sport ≠ hygiène" },
+        { "type": "mc", "question": "Qu’est-ce que tu fais le soir ?", "a": "Je fais du yoga.", "b": "Tu fais du yoga.", "c": "Il fait du yoga.", "d": "Nous faisons du yoga.", "answer": "A", "explanation": "réponse à « tu » → Je" },
+        { "type": "fill", "question": "Je ___ les dents après le petit-déjeuner. (se brosser)", "answer": "me brosse", "explanation": "" },
+        { "type": "fill", "question": "Nous ___ à 23 heures. (se coucher)", "answer": "nous nous couchons|nous couchons", "explanation": "nous nous couchons" },
+        { "type": "fill", "question": "Tu ___ pour sortir. (se préparer)", "answer": "te prépares|te prepares", "explanation": "" },
+        { "type": "fill", "question": "Ils ___ de la course à pied le week-end. (faire)", "answer": "font", "explanation": "ils font" },
+        { "type": "write", "question": "Répondez : À quelle heure est-ce que tu te réveilles ? (phrase complète)", "answer": "Je me réveille à 7 heures.", "explanation": "Exemple" },
+        { "type": "write", "question": "Répondez avec ≥1 verbe pronominal + faire : Qu’est-ce que tu fais pendant ton temps libre ?", "answer": "Je me prépare et je fais du yoga.", "explanation": "Exemple" }
+      ]
+    },
+    {
+      "slug": "cahier-d4-famille",
+      "title": "Devoir 4 — Famille & possessifs",
+      "emoji": "👨‍👩‍👧",
+      "description": "mon/ma/mes…, membres de la famille, QCM et corrections.",
+      "duration": "25 min",
+      "order": 4,
+      "tags": "A1, cahier, famille, possessifs",
+      "overview": "Devoir 4 interactif : adjectifs possessifs et vocabulaire de la famille. Accord avec le **nom possédé**.",
+      "grammar": "## Possessifs\n\n| | m.s. | f.s. | pl. |\n|---|---|---|---|\n| je | mon | ma | mes |\n| tu | ton | ta | tes |\n| il/elle | son | sa | ses |\n| nous | notre | notre | nos |\n| vous | votre | votre | vos |\n| ils/elles | leur | leur | leurs |\n\n*Elle aime **son** frère* · *Il aime **sa** sœur*.",
+      "vocabulary": [
+        { "french": "mère / père", "english": "mother / father", "type": "noun", "note": "" },
+        { "french": "sœur / frère", "english": "sister / brother", "type": "noun", "note": "" },
+        { "french": "parents / grands-parents", "english": "parents / grandparents", "type": "noun", "note": "" },
+        { "french": "fils / fille", "english": "son / daughter", "type": "noun", "note": "" },
+        { "french": "mon / ma / mes", "english": "my", "type": "adj", "note": "" },
+        { "french": "son / sa / ses", "english": "his/her", "type": "adj", "note": "accord avec le nom" }
+      ],
+      "flashcards": [
+        { "front": "je + mère", "back": "ma mère", "hint": "f.s." },
+        { "front": "il + sœur", "back": "sa sœur", "hint": "f.s." },
+        { "front": "tu + parents", "back": "tes parents", "hint": "pl." },
+        { "front": "elle + père", "back": "son père", "hint": "m.s. même si elle" },
+        { "front": "père de ma mère", "back": "mon grand-père", "hint": "grand-père" },
+        { "front": "Corrige : C’est ma père.", "back": "C’est mon père.", "hint": "mon" }
+      ],
+      "exam": [
+        { "type": "fill", "question": "Je te présente ___ mère.", "answer": "ma", "explanation": "mère f.s." },
+        { "type": "fill", "question": "Il aime beaucoup ___ sœur.", "answer": "sa", "explanation": "sœur + il → sa" },
+        { "type": "fill", "question": "Tu habites avec ___ parents ?", "answer": "tes", "explanation": "parents pl." },
+        { "type": "fill", "question": "Elle téléphone à ___ père.", "answer": "son", "explanation": "père m.s." },
+        { "type": "fill", "question": "J’adore ___ famille.", "answer": "ma", "explanation": "famille f.s." },
+        { "type": "fill", "question": "Tu aimes ___ frère ?", "answer": "ton", "explanation": "" },
+        { "type": "fill", "question": "Il cherche ___ clés.", "answer": "ses", "explanation": "clés pl." },
+        { "type": "fill", "question": "Je regarde ___ photos de famille.", "answer": "mes", "explanation": "photos pl." },
+        { "type": "mc", "question": "C’est (mon / ma) sœur.", "a": "mon", "b": "ma", "c": "mes", "d": "sa", "answer": "B", "explanation": "" },
+        { "type": "mc", "question": "Il parle avec (son / sa) mère.", "a": "son", "b": "sa", "c": "ses", "d": "ma", "answer": "B", "explanation": "" },
+        { "type": "mc", "question": "Ce sont (mes / ma) parents.", "a": "ma", "b": "mes", "c": "mon", "d": "son", "answer": "B", "explanation": "" },
+        { "type": "fill", "question": "Le père de ma mère est mon ___.", "answer": "grand-père|grand-pere", "explanation": "" },
+        { "type": "fill", "question": "La fille de mes parents est ma ___.", "answer": "sœur|soeur", "explanation": "" },
+        { "type": "fill", "question": "Le fils de mes parents est mon ___.", "answer": "frère|frere", "explanation": "" },
+        { "type": "fill", "question": "Corrige : C’est ma père.", "answer": "C’est mon père.|C'est mon père.", "explanation": "mon père" },
+        { "type": "fill", "question": "Corrige : Il aime sa frère.", "answer": "Il aime son frère.", "explanation": "son frère" },
+        { "type": "fill", "question": "Je m’appelle Paul. ___ sœur s’appelle Julie.", "answer": "Ma", "explanation": "Ma" },
+        { "type": "fill", "question": "Nous aimons ___ famille.", "answer": "notre", "explanation": "" },
+        { "type": "fill", "question": "Vous présentez ___ frères et sœurs.", "answer": "vos", "explanation": "" },
+        { "type": "write", "question": "Présentez votre famille en 3–5 phrases (≥ 3 possessifs).", "answer": "Voici ma famille. Mon père s’appelle Ali. Ma mère s’appelle Sara. J’aime mes parents.", "explanation": "Exemple" }
+      ]
+    },
+    {
+      "slug": "cahier-d5-futur-meteo",
+      "title": "Devoir 5 — Futur proche & météo",
+      "emoji": "⛅",
+      "description": "aller + infinitif, Il fait / Il y a, associations météo, projets.",
+      "duration": "30 min",
+      "order": 5,
+      "tags": "A1, cahier, futur proche, météo",
+      "overview": "Devoir 5 interactif : conjuguez le **futur proche**, transformez des phrases, complétez **Il fait / Il y a**, et associez la météo.",
+      "grammar": "## Futur proche\n\nsujet + **aller** (présent) + infinitif\n\n*je vais manger* · *nous allons voir* · *ils vont venir*\n\n## Météo\n\n- **Il fait** + adj. (*beau, chaud, froid, mauvais*)\n- **Il y a** + nom (*du soleil, du vent, des nuages, de la neige*)\n- **Il pleut** · **Il neige**",
+      "vocabulary": [
+        { "french": "Il fait beau / chaud / froid", "english": "It's nice / hot / cold", "type": "expression", "note": "Il fait + adj." },
+        { "french": "Il y a du soleil / du vent", "english": "There is sun / wind", "type": "expression", "note": "Il y a + nom" },
+        { "french": "Il pleut / Il neige", "english": "It's raining / snowing", "type": "verb", "note": "" },
+        { "french": "je vais + infinitif", "english": "I'm going to…", "type": "grammar", "note": "futur proche" }
+      ],
+      "flashcards": [
+        { "front": "Demain, je ___ (visiter)", "back": "vais visiter", "hint": "je vais" },
+        { "front": "Nous ___ (regarder)", "back": "allons regarder", "hint": "nous allons" },
+        { "front": "beau (météo)", "back": "Il fait beau.", "hint": "Il fait" },
+        { "front": "soleil", "back": "Il y a du soleil.", "hint": "Il y a" },
+        { "front": "Elle regarde la télé → futur proche", "back": "Elle va regarder la télévision.", "hint": "va + inf." },
+        { "front": "froid", "back": "Il fait froid.", "hint": "Il fait" }
+      ],
+      "exam": [
+        { "type": "fill", "question": "Demain, je ___ (visiter) ma grand-mère.", "answer": "vais visiter", "explanation": "je vais + inf." },
+        { "type": "fill", "question": "Nous ___ (regarder) un film ce soir.", "answer": "allons regarder", "explanation": "" },
+        { "type": "fill", "question": "Elle ___ (faire) du sport demain matin.", "answer": "va faire", "explanation": "" },
+        { "type": "fill", "question": "Tu ___ (aller) au restaurant ce week-end.", "answer": "vas aller", "explanation": "aller → vas aller" },
+        { "type": "fill", "question": "Ils ___ (prendre) le train samedi.", "answer": "vont prendre", "explanation": "" },
+        { "type": "fill", "question": "Vous ___ (étudier) le français ce soir.", "answer": "allez étudier|allez etudier", "explanation": "" },
+        { "type": "fill", "question": "Transformez : Elle regarde la télévision.", "answer": "Elle va regarder la télévision.|Elle va regarder la television.", "explanation": "" },
+        { "type": "fill", "question": "Transformez : Nous faisons les courses.", "answer": "Nous allons faire les courses.", "explanation": "" },
+        { "type": "fill", "question": "___ beau (Il fait / Il y a / Il)", "answer": "Il fait", "explanation": "adj." },
+        { "type": "fill", "question": "___ du soleil", "answer": "Il y a", "explanation": "nom" },
+        { "type": "fill", "question": "___ du vent", "answer": "Il y a", "explanation": "" },
+        { "type": "fill", "question": "___ froid", "answer": "Il fait", "explanation": "" },
+        { "type": "fill", "question": "___ des nuages", "answer": "Il y a", "explanation": "" },
+        { "type": "mc", "question": "Il fait froid ↔", "a": "ciel bleu", "b": "température basse", "c": "arbres bougent", "d": "eau du ciel", "answer": "B", "explanation": "1-b" },
+        { "type": "mc", "question": "Il y a du vent ↔", "a": "ciel bleu", "b": "température basse", "c": "arbres bougent", "d": "eau du ciel", "answer": "C", "explanation": "2-c" },
+        { "type": "mc", "question": "Il fait beau ↔", "a": "ciel bleu", "b": "température basse", "c": "arbres bougent", "d": "ciel nuageux", "answer": "A", "explanation": "3-a" },
+        { "type": "mc", "question": "Il pleut ↔", "a": "ciel bleu", "b": "température basse", "c": "arbres bougent", "d": "eau du ciel", "answer": "D", "explanation": "4-d" },
+        { "type": "write", "question": "Écrivez 2 phrases : météo aujourd’hui + un projet au futur proche.", "answer": "Il fait beau. Ce soir, je vais regarder un film.", "explanation": "Exemple" }
+      ]
+    },
+    {
+      "slug": "cahier-fill-blanks",
+      "title": "Atelier fill — Blancs du cahier",
+      "emoji": "✍️",
+      "description": "Pack « compléter » uniquement : heure, possessifs, futur, météo, RDV.",
+      "duration": "20 min",
+      "order": 6,
+      "tags": "A1, cahier, fill, drill",
+      "overview": "Entraînement **fill-in-the-blank** mélangé à partir de tous les devoirs du cahier. Idéal avant un contrôle.",
+      "grammar": "## Astuce\n\nÉcrivez la réponse exacte. Les accents sont ignorés à la correction. Plusieurs formulations acceptées quand c’est indiqué.",
+      "vocabulary": [
+        { "french": "à", "english": "at (time)", "type": "prep", "note": "à + heure" },
+        { "french": "ma / mon / mes", "english": "my", "type": "adj", "note": "" },
+        { "french": "je vais", "english": "I am going to", "type": "verb", "note": "futur proche" }
+      ],
+      "flashcards": [
+        { "front": "Le cours commence ___ 9h", "back": "à", "hint": "prép." },
+        { "front": "Je te présente ___ mère", "back": "ma", "hint": "f" },
+        { "front": "Demain je ___ (partir)", "back": "vais partir", "hint": "aller" }
+      ],
+      "exam": [
+        { "type": "fill", "question": "16:20 → Il est…", "answer": "Il est seize heures vingt.|Il est quatre heures vingt.|Il est 16 heures vingt.", "explanation": "" },
+        { "type": "fill", "question": "21:50 → Il est…", "answer": "Il est vingt et une heures cinquante.|Il est neuf heures cinquante.|Il est 21 heures cinquante.", "explanation": "" },
+        { "type": "fill", "question": "Je dîne ___ 21h.", "answer": "à|a", "explanation": "" },
+        { "type": "fill", "question": "31/10 →", "answer": "le trente et un octobre", "explanation": "" },
+        { "type": "fill", "question": "Après samedi ?", "answer": "dimanche", "explanation": "" },
+        { "type": "fill", "question": "Avant lundi ?", "answer": "dimanche", "explanation": "" },
+        { "type": "fill", "question": "Complète : prendre ___", "answer": "rendez-vous", "explanation": "" },
+        { "type": "fill", "question": "êtes ___ lundi", "answer": "disponible|disponibles", "explanation": "" },
+        { "type": "fill", "question": "On ___ (aller) au café demain. (futur proche, on)", "answer": "va aller", "explanation": "on = il → va" },
+        { "type": "fill", "question": "Mes amis ___ (préparer) une fête.", "answer": "vont préparer|vont preparer", "explanation": "" },
+        { "type": "fill", "question": "___ mauvais", "answer": "Il fait", "explanation": "" },
+        { "type": "fill", "question": "___ de la neige", "answer": "Il y a", "explanation": "" },
+        { "type": "fill", "question": "Marie aime ___ parents.", "answer": "ses", "explanation": "" },
+        { "type": "fill", "question": "Lucas habite avec ___ mère et ___ père. (deux mots séparés par / )", "answer": "sa / son|sa son", "explanation": "sa + son" },
+        { "type": "fill", "question": "Après l’été →", "answer": "l’automne|l'automne|automne", "explanation": "" }
+      ]
+    },
+    {
+      "slug": "cahier-error-fix",
+      "title": "Atelier erreurs — Corrigez !",
+      "emoji": "🔧",
+      "description": "Corrigez les phrases fautives du cahier (RDV, possessifs, négation, articles).",
+      "duration": "15 min",
+      "order": 7,
+      "tags": "A1, cahier, error, correction",
+      "overview": "Format **error-correction** : lisez la phrase incorrecte, tapez la version correcte.",
+      "grammar": "## Erreurs fréquentes\n\n- *rendez-vous **de** mardi* → **pour** mardi\n- *je ne suis dispo **pas*** → *je ne suis **pas** dispo*\n- *à le musée* → **au** musée\n- *ma père* → **mon** père",
+      "vocabulary": [
+        { "french": "pour mardi", "english": "for Tuesday", "type": "expression", "note": "pas de" },
+        { "french": "au musée", "english": "to the museum", "type": "expression", "note": "à + le" },
+        { "french": "ne… pas", "english": "not", "type": "grammar", "note": "" }
+      ],
+      "flashcards": [
+        { "front": "❌ rendez-vous de mardi", "back": "rendez-vous pour mardi", "hint": "pour" },
+        { "front": "❌ On va à le musée", "back": "On va au musée", "hint": "au" },
+        { "front": "❌ C’est ma père", "back": "C’est mon père", "hint": "mon" }
+      ],
+      "exam": [
+        { "type": "fill", "question": "❌ Je voudrais prendre un rendez-vous de mardi.", "answer": "Je voudrais prendre rendez-vous pour mardi.|Je voudrais prendre un rendez-vous pour mardi.", "explanation": "pour" },
+        { "type": "fill", "question": "❌ Est-ce que tu es dispo ? (contexte formel médecin)", "answer": "Est-ce que vous êtes dispo ?|Est-ce que vous êtes disponible ?", "explanation": "vous" },
+        { "type": "fill", "question": "❌ Non, je ne suis dispo pas.", "answer": "Non, je ne suis pas dispo.|Non, je ne suis pas disponible.", "explanation": "" },
+        { "type": "fill", "question": "❌ On va à le musée ?", "answer": "On va au musée ?", "explanation": "" },
+        { "type": "fill", "question": "❌ À quelle heure est possible ?", "answer": "À quelle heure, est-ce possible ?|A quelle heure, est-ce possible ?", "explanation": "" },
+        { "type": "fill", "question": "❌ Je suis disponible pas samedi.", "answer": "Je ne suis pas disponible samedi.|Je ne suis pas dispo samedi.", "explanation": "" },
+        { "type": "fill", "question": "❌ Oui, je suis disponible pas.", "answer": "Non, je ne suis pas disponible.|Oui, je ne suis pas disponible.", "explanation": "négation claire" },
+        { "type": "fill", "question": "❌ C’est ma père.", "answer": "C’est mon père.|C'est mon père.", "explanation": "" },
+        { "type": "fill", "question": "❌ Il aime sa frère.", "answer": "Il aime son frère.", "explanation": "" },
+        { "type": "fill", "question": "❌ Elle téléphone à son mère.", "answer": "Elle téléphone à sa mère.", "explanation": "" },
+        { "type": "fill", "question": "❌ Ce sont mon parents.", "answer": "Ce sont mes parents.", "explanation": "" },
+        { "type": "mc", "question": "Quelle phrase est correcte ?", "a": "On va à le café ?", "b": "On va au café ?", "c": "On va de le café ?", "d": "On va le café ?", "answer": "B", "explanation": "" },
+        { "type": "mc", "question": "Quelle phrase est correcte ?", "a": "Je ne suis dispo pas.", "b": "Je suis pas ne dispo.", "c": "Je ne suis pas dispo.", "d": "Je ne pas suis dispo.", "answer": "C", "explanation": "" }
+      ]
+    },
+    {
+      "slug": "cahier-dialogues-ordre",
+      "title": "Atelier dialogues — Remettre en ordre",
+      "emoji": "💬",
+      "description": "Ordre des répliques (médecin & sorties) + QCM de communication.",
+      "duration": "15 min",
+      "order": 8,
+      "tags": "A1, cahier, dialogue, order",
+      "overview": "Format **order** + communication : remettez les dialogues dans l’ordre, puis choisissez la bonne réplique.",
+      "grammar": "## Structure d’un RDV\n\n1. Saluer (**Bonjour !**)\n2. Demander un rendez-vous\n3. Proposer un jour / une heure\n4. Confirmer (**est-ce possible ?**)\n5. Saluer (**Au revoir !**)",
+      "vocabulary": [
+        { "french": "Bonjour !", "english": "Hello (formal)", "type": "expression", "note": "" },
+        { "french": "Salut !", "english": "Hi (informal)", "type": "expression", "note": "" },
+        { "french": "Au revoir !", "english": "Goodbye", "type": "expression", "note": "" },
+        { "french": "À quelle heure ?", "english": "At what time?", "type": "expression", "note": "" }
+      ],
+      "flashcards": [
+        { "front": "Start formal call", "back": "Bonjour !", "hint": "" },
+        { "front": "End call", "back": "Au revoir !", "hint": "" },
+        { "front": "Ask time", "back": "À quelle heure ?", "hint": "" }
+      ],
+      "exam": [
+        { "type": "order", "question": "D1 numéros : (1)Oui, à 11h (2)Je voudrais RDV (3)Dispo mercredi ? (4)Bonjour ! → ordre", "answer": "4 2 3 1", "explanation": "" },
+        { "type": "order", "question": "D2 : (1)À quelle heure ? (2)Bonjour, RDV vendredi (3)À 16h possible ? (4)Oui disponible → ordre", "answer": "2 1 3 4", "explanation": "" },
+        { "type": "order", "question": "Ordonnez les 4 répliques (mots = labels).", "answer": "Bonjour Je-voudrais-RDV Est-ce-possible Au-revoir", "explanation": "saluer → demander → confirmer → quitter" },
+        { "type": "mc", "question": "Ami propose samedi, vous travaillez…", "a": "Oui, je suis disponible.", "b": "Non, je ne suis pas dispo samedi.", "c": "Oui, je suis dispo samedi.", "d": "Est-ce possible ?", "answer": "B", "explanation": "" },
+        { "type": "mc", "question": "Accepter une sortie…", "a": "Non, je ne suis pas dispo.", "b": "Oui, avec plaisir !", "c": "À quelle date ?", "d": "Quel mois ?", "answer": "B", "explanation": "" },
+        { "type": "mc", "question": "Demander l’heure du RDV…", "a": "Quelle est la date ?", "b": "À quelle heure ?", "c": "Quel mois ?", "d": "On va au café ?", "answer": "B", "explanation": "" },
+        { "type": "mc", "question": "Terminer un appel…", "a": "Salut !", "b": "Au revoir !", "c": "Oui, je suis dispo.", "d": "On va au resto ?", "answer": "B", "explanation": "" },
+        { "type": "mc", "question": "On fait une balade ? →", "a": "Oui, avec plaisir !", "b": "Oui, bonne idée !", "c": "Désolé, pas demain.", "d": "Non, vendredi.", "answer": "B", "explanation": "cahier match C" },
+        { "type": "fill", "question": "Complète (formel) : ___ ! Je voudrais prendre rendez-vous.", "answer": "Bonjour", "explanation": "" },
+        { "type": "write", "question": "Écrivez un mini-dialogue (4 répliques) pour proposer une sortie au cinéma.", "answer": "Salut ! On va au cinéma ? — Oui, avec plaisir ! — À quelle heure ? — À 20 heures. À bientôt !", "explanation": "Exemple" }
+      ]
+    }
+  ]
+}

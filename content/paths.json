@@ -2,6 +2,25 @@
   "version": 1,
   "paths": [
     {
+      "id": "cahier-classe",
+      "title": "Cahier de classe",
+      "subtitle": "Devoirs interactifs (pas PDF)",
+      "emoji": "📝",
+      "description": "Les devoirs du cahier A1-1 en exercices interactifs : fill, QCM, ordre, corrections. Ajoutez aussi vos propres devoirs depuis Accueil.",
+      "level": "A1",
+      "archived": false,
+      "lessonSlugs": [
+        "cahier-d1-heure-date",
+        "cahier-d2-rdv-sorties",
+        "cahier-d3-journee",
+        "cahier-d4-famille",
+        "cahier-d5-futur-meteo",
+        "cahier-fill-blanks",
+        "cahier-error-fix",
+        "cahier-dialogues-ordre"
+      ]
+    },
+    {
       "id": "semestre-a1",
       "title": "Semestre A1",
       "subtitle": "Ce que nous avons appris en classe",
