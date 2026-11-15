@@ -484,6 +484,12 @@ async function build() {
   const vocab = await buildVocab();
   await writeFile(join(distRoot, 'data', 'vocab.json'), `${JSON.stringify(vocab, null, 0)}\n`);
   console.log(`Built ${vocab.total} vocab entries by level: ${Object.entries(vocab.byLevel).map(([l, n]) => `${l}:${n}`).join(' ')}.`);
+  for (const folder of ['edito-a1', 'cahier-a1']) {
+    const src = join(projectRoot, 'data', folder);
+    if (await pathExists(src)) {
+      await cp(src, join(distRoot, 'data', folder), { recursive: true });
+    }
+  }
   if (copyLibrary && (await pathExists(addedRoot))) {
     const destination = join(distRoot, 'added content');
     await rm(destination, { recursive: true, force: true });

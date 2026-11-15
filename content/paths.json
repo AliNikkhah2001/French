@@ -48,8 +48,11 @@
       "level": "A1",
       "archived": false,
       "lessonSlugs": [
+        "edito-hub-supplements",
         "edito-u0-u1-bienvenue",
         "edito-u2-pres-de-moi",
+        "edito-u3-manger",
+        "edito-u4-cest-ou",
         "edito-u5-u6-temps-activites",
         "edito-vie-pratique-sorties"
       ]

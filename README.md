@@ -13,7 +13,7 @@
   <sub>Semestre A1 path · Édito companion · PWA · offline · iOS Home Screen ready</sub>
 </p>
 
-> **Default experience (2026):** home opens on **Cahier de classe** — interactive homework from your A1-1 cahier (fill / QCM / order / error-fix), then **Semestre A1** guides + **Companion Édito**. Add your own homeworks/flashcards on Accueil (stored locally; export JSON). Source bank: [`data/cahier-a1/devoirs.json`](data/cahier-a1/devoirs.json). Older podcast paths stay behind **Bibliothèque complète**. Édito is external/legal only ([Didier numérique](https://didierfle.com/produit/edito-a1-edition-2022-2024-livre-numerique/)). Phone tests: [`docs/semester-a1/`](docs/semester-a1/).
+> **Default experience (2026):** **Cahier de classe** + **Semestre A1** + **Companion Édito** (hub + original unit drills). Legal Édito samples + free TV5/Everyday French: [`docs/semester-a1/EDITO_SUPPLEMENTS.md`](docs/semester-a1/EDITO_SUPPLEMENTS.md). No pirate PDFs. Add devoirs on Accueil. Phone tests: [`docs/semester-a1/`](docs/semester-a1/).
 
 <p align="center">
   <img src="https://img.shields.io/badge/PWA-ready-1a4a80?style=flat-square" alt="PWA ready"/>

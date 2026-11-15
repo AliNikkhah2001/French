@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "updated": "2026-11-15",
+  "copyright": "This app never redistributes Édito PDF/pages. Links below are official Didier/Educadhoc samples or free third-party A1 practice. Book answers live only in paid cahier/guide or official teacher downloads.",
+  "units": [
+    { "id": "U0", "title": "Bienvenue !", "themes": ["salutations", "alphabet", "jours"] },
+    { "id": "U1", "title": "Je suis…", "themes": ["identité", "être", "avoir", "nationalités"] },
+    { "id": "U2", "title": "Près de moi", "themes": ["famille", "possessifs", "verbes en -er"] },
+    { "id": "U3", "title": "Qu’est-ce qu’on mange ?", "themes": ["nourriture", "partitifs", "restaurant"] },
+    { "id": "U4", "title": "C’est où ?", "themes": ["ville", "directions", "transports"] },
+    { "id": "U5", "title": "C’est tendance !", "themes": ["vêtements", "météo", "futur proche"] },
+    { "id": "U6", "title": "Qu’est-ce qu’on fait aujourd’hui ?", "themes": ["activités", "faire", "routine"] },
+    { "id": "U7", "title": "Chez moi !", "themes": ["logement", "prépositions de lieu"] },
+    { "id": "U8", "title": "En forme !", "themes": ["sport", "santé"] },
+    { "id": "U9", "title": "Bonnes vacances !", "themes": ["voyage", "projets"] },
+    { "id": "U10", "title": "Au travail !", "themes": ["métiers", "quotidien pro"] }
+  ],
+  "official": [
+    {
+      "id": "livre-numerique",
+      "title": "Livre numérique élève (Educadhoc)",
+      "kind": "paid",
+      "url": "https://didierfle.com/produit/edito-a1-edition-2022-2024-livre-numerique/",
+      "note": "ISBN 9782278103799 · licence ~2 ans · audios/vidéos inclus"
+    },
+    {
+      "id": "extrait-livre",
+      "title": "Feuilleter un extrait (Mes Manuels)",
+      "kind": "free-sample",
+      "url": "https://mesmanuels.fr/demo/9782278103799",
+      "note": "Extrait officiel du livre numérique — pas le livre entier"
+    },
+    {
+      "id": "educadhoc-demo-enseignant",
+      "title": "Demo Educadhoc pack enseignant",
+      "kind": "free-sample",
+      "url": "https://demo.educadhoc.fr/reader/textbook/9782278103782/fxl?demoMode=extract&feature=demo",
+      "note": "Aperçu plateforme Educadhoc"
+    },
+    {
+      "id": "cahier-papier",
+      "title": "Cahier d’activités + didierfle.app",
+      "kind": "paid",
+      "url": "https://didierfle.com/produit/edito-a1-edition-2022-2024-cahier-didierfle-app/",
+      "note": "Corrigés + bilans + DELF en fin d’unité (dans le cahier)"
+    },
+    {
+      "id": "cahier-extrait-calameo",
+      "title": "Extrait officiel cahier (Calaméo)",
+      "kind": "free-sample",
+      "url": "https://www.calameo.com/books/005419417e89d0d9cb7bb",
+      "note": "Sommaire public U0–U10 + pages d’échantillon Didier FLE"
+    },
+    {
+      "id": "cahier-numerique",
+      "title": "Cahier numérique (Educadhoc)",
+      "kind": "paid",
+      "url": "https://didierfle.com/produit/edito-a1-edition-2022-2024-cahier-numerique/",
+      "note": "Exercices interactifs autocorrectifs"
+    },
+    {
+      "id": "guide-pedagogique",
+      "title": "Guide pédagogique (structure + tests)",
+      "kind": "teacher",
+      "url": "https://didierfle.com/produit/edito-a1-edition-2022-2024-guide-pedagogique/",
+      "note": "Compte professeur Didier : téléchargement gratuit possible · TOC/tests"
+    },
+    {
+      "id": "guide-pdf-toc",
+      "title": "Guide pédagogique PDF (TOC public)",
+      "kind": "teacher",
+      "url": "https://santillanafrancais.fr/wp-content/uploads/2022/09/Guide-pedagogique-Edito-A1-2022.pdf",
+      "note": "Utiliser pour la structure des unités — ne pas republier le contenu"
+    },
+    {
+      "id": "didierfle-app",
+      "title": "didierfle.app (scan papier)",
+      "kind": "companion",
+      "url": "https://didierfle.app/",
+      "note": "Audio/vidéo en flashant les pages du livre/cahier papier"
+    },
+    {
+      "id": "site-compagnon",
+      "title": "Site compagnon Édito 2022",
+      "kind": "companion",
+      "url": "https://www.didierfle-edito2022.fr/",
+      "note": "Activités complémentaires (compte + question mot de passe du manuel)"
+    },
+    {
+      "id": "eboutique",
+      "title": "eBoutique Didier / Educadhoc",
+      "kind": "paid",
+      "url": "https://eboutique.didierfle.com/fr/US/products/edito-niveau-a1-2022-2eme-edition-livre-numerique-eleve",
+      "note": "Achat licence élève"
+    }
+  ],
+  "freePractice": [
+    {
+      "id": "tv5-a1",
+      "title": "TV5MONDE — Exercices A1",
+      "url": "https://apprendre.tv5monde.com/fr/exercices/a1-debutant",
+      "mapsTo": ["U0", "U1", "U2", "U5", "U6"],
+      "note": "Vidéos + grammaire gratuites (heure, famille, météo…)"
+    },
+    {
+      "id": "tv5-heure",
+      "title": "TV5MONDE — Dire l’heure",
+      "url": "https://apprendre.tv5monde.com/fr/exercices/a1-debutant/grammaire-dire-lheure",
+      "mapsTo": ["U5", "U6"],
+      "note": "Grammaire A1"
+    },
+    {
+      "id": "tv5-meteo",
+      "title": "TV5MONDE — Dire le temps qu’il fait",
+      "url": "https://apprendre.tv5monde.com/fr/aides/grammaire-dire-le-temps-quil-fait",
+      "mapsTo": ["U5"],
+      "note": "Il fait / Il y a / Il pleut"
+    },
+    {
+      "id": "tv5-famille",
+      "title": "TV5MONDE — La famille",
+      "url": "https://apprendre.tv5monde.com/fr/exercices/a1-debutant/la-famille",
+      "mapsTo": ["U2"],
+      "note": "Possessifs + vocab famille"
+    },
+    {
+      "id": "everyday-exercices",
+      "title": "Everyday French — Exercices interactifs",
+      "url": "https://everydayfrench.fr/exercices/",
+      "mapsTo": ["U0", "U1", "U2", "U3", "U5", "U6"],
+      "note": "Être/avoir, heure, famille, futur proche, nourriture…"
+    },
+    {
+      "id": "lmu-toc",
+      "title": "LMU — TOC publique Édito A1.1",
+      "url": "https://cms-cdn.lmu.de/media/50-zentren/sprachenzentrum/downloads/kursinhalt-franz-a1_1-neu.pdf",
+      "mapsTo": ["U1", "U2", "U3", "U4", "U5"],
+      "note": "Objectifs communicatifs par unité (structure seule)"
+    }
+  ],
+  "inAppLessons": [
+    "edito-hub-supplements",
+    "edito-u0-u1-bienvenue",
+    "edito-u2-pres-de-moi",
+    "edito-u3-manger",
+    "edito-u4-cest-ou",
+    "edito-u5-u6-temps-activites",
+    "edito-vie-pratique-sorties"
+  ]
+}

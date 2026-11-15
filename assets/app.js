@@ -530,12 +530,15 @@ function renderPathLibrary() {
       ${exploreCount ? `<div class="explore-link"><a href="#view=library">🔍 Explore ${exploreCount} more lessons in the library</a></div>` : ''}
       ${renderCustomPackPanel()}
       <div class="edito-links narrow-panel">
-        <strong>Livre Édito A1 (légal)</strong>
-        <p>Lisez le manuel à côté de l’app — nous ne redistribuons pas le PDF.</p>
+        <strong>Édito A1 — ressources légales</strong>
+        <p>Pas de PDF pirate ici. Extraits officiels + free A1 pour compléter. Hub détaillé dans le parcours Companion.</p>
         <p>
-          <a class="button blue small" href="https://didierfle.com/produit/edito-a1-edition-2022-2024-livre-numerique/" target="_blank" rel="noopener">Livre numérique Didier</a>
-          <a class="button paper small" href="https://eboutique.didierfle.com/fr/US/products/edito-niveau-a1-2022-2eme-edition-livre-numerique-eleve" target="_blank" rel="noopener">eBoutique Educadhoc</a>
-          <a class="button paper small" href="https://santillanafrancais.fr/wp-content/uploads/2022/09/Guide-pedagogique-Edito-A1-2022.pdf" target="_blank" rel="noopener">Guide pédagogique (TOC)</a>
+          <a class="button blue small" href="https://didierfle.com/produit/edito-a1-edition-2022-2024-livre-numerique/" target="_blank" rel="noopener">Livre numérique</a>
+          <a class="button paper small" href="https://mesmanuels.fr/demo/9782278103799" target="_blank" rel="noopener">Feuilleter extrait</a>
+          <a class="button paper small" href="https://www.calameo.com/books/005419417e89d0d9cb7bb" target="_blank" rel="noopener">Extrait cahier</a>
+          <a class="button paper small" href="https://didierfle.app/" target="_blank" rel="noopener">didierfle.app</a>
+          <a class="button paper small" href="https://apprendre.tv5monde.com/fr/exercices/a1-debutant" target="_blank" rel="noopener">TV5MONDE A1</a>
+          <a class="button paper small" href="https://everydayfrench.fr/exercices/" target="_blank" rel="noopener">Everyday French</a>
         </p>
       </div>
     </section>`;
