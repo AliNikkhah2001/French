@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atelier-francais-v12';
+const CACHE_NAME = 'atelier-francais-v13';
 const PRECACHE_URLS = [
   './',
   'index.html',
